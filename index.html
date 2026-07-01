@@ -5,12 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ecrew-Hand Over Cabin</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tambahkan library html2pdf untuk fitur cetak PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
         .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); }
-        .nav-active { border-bottom: 2px solid #60a5fa; color: #60a5fa; }
         .tab-content { display: none; }
         .tab-active { display: block; }
+        
+        /* Ubah style nav-active menjadi bentuk tombol (pill) agar lebih ramah sentuhan di HP */
+        .nav-active { background: rgba(96, 165, 250, 0.2); color: #60a5fa; font-weight: 500; }
+        
+        /* CSS untuk menyembunyikan scrollbar tapi tetap bisa di-scroll (Khas iOS) */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
         input, select { background: rgba(0,0,0,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.1) !important; }
         input::placeholder { color: #94a3b8; }
         table { border-collapse: separate; border-spacing: 0 10px; }
@@ -18,7 +27,7 @@
         @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="p-4 md:p-8" onload="syncData()">
+<body class="p-4 md:p-8" onload="initApp()">
 
     <header class="max-w-5xl mx-auto mb-8 flex justify-between items-center">
         <h1 class="text-2xl font-light tracking-widest">ECREW HANDOVER</h1>
@@ -30,13 +39,14 @@
         </div>
     </header>
 
-    <nav class="max-w-5xl mx-auto glass rounded-full px-6 py-3 mb-8">
-        <ul class="flex justify-center space-x-4 flex-wrap text-sm">
-            <li class="cursor-pointer hover:text-blue-400 nav-item nav-active" onclick="showTab('list', this)">Data Handover</li>
-            <li class="cursor-pointer hover:text-blue-400 nav-item" onclick="showTab('add', this)">Add New Report</li>
-            <li class="cursor-pointer hover:text-blue-400 nav-item" onclick="showTab('cabin', this)">DB Cabin</li>
-            <li class="cursor-pointer hover:text-blue-400 nav-item" onclick="showTab('engineer', this)">DB Engineer</li>
-            <li class="cursor-pointer hover:text-blue-400 nav-item" onclick="showTab('aircraft', this)">DB Aircraft</li>
+    <nav class="max-w-5xl mx-auto glass rounded-2xl mb-8">
+        <!-- Ubah ul menjadi flex nowrap dengan overflow auto agar bisa di-swipe di HP -->
+        <ul class="flex overflow-x-auto hide-scrollbar gap-2 text-sm p-2 whitespace-nowrap md:justify-center">
+            <li class="cursor-pointer hover:bg-white/10 nav-item nav-active px-4 py-2 rounded-xl transition flex-shrink-0" onclick="showTab('list', this)">Data Handover</li>
+            <li class="cursor-pointer hover:bg-white/10 nav-item px-4 py-2 rounded-xl transition flex-shrink-0" onclick="showTab('add', this)">Add New Report</li>
+            <li class="cursor-pointer hover:bg-white/10 nav-item px-4 py-2 rounded-xl transition flex-shrink-0" onclick="showTab('cabin', this)">DB Cabin</li>
+            <li class="cursor-pointer hover:bg-white/10 nav-item px-4 py-2 rounded-xl transition flex-shrink-0" onclick="showTab('engineer', this)">DB Engineer</li>
+            <li class="cursor-pointer hover:bg-white/10 nav-item px-4 py-2 rounded-xl transition flex-shrink-0" onclick="showTab('aircraft', this)">DB Aircraft</li>
         </ul>
     </nav>
 
@@ -58,8 +68,8 @@
             <form id="reportForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="datetime-local" id="repDate" class="w-full p-3 rounded-xl">
                 <select id="repType" class="w-full p-3 rounded-xl">
-                    <option>Flight Out</option>
-                    <option>Flight Return</option>
+                    <option value="Flight Out">Flight Out</option>
+                    <option value="Flight Return">Flight Return</option>
                 </select>
                 <input type="text" id="repRoute" placeholder="Route" class="w-full p-3 rounded-xl">
                 <select id="repReg" class="w-full p-3 rounded-xl"><option value="">Pilih Registrasi Pesawat</option></select>
@@ -125,11 +135,35 @@
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbynx0EGY550Fe1GFcOAWIdSlNCsXPDuRwprtRTjCcwrNHcTeiAuLyGdm9CvpI9xpyrW/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyCaDSaK8kmnr4c6YaVF8-Zqgi-9DWnqNAYuYDAKZ_Ou2enDdxA-_rOh3i0g0O7OcvV/exec";
         
         // State lokal aplikasi
         let data = { cabin: [], eng: [], air: [], reports: [] };
         let editIdx = { cabin: -1, eng: -1, air: -1, report: -1 };
+        let syncTimer = null;
+        let isSaving = false; // PENANDA: Mencegah auto-sync menarik data saat sedang proses simpan
+
+        // Inisialisasi Aplikasi & Auto-Sync
+        function initApp() {
+            syncData(); // Sync pertama kali saat halaman dimuat
+            
+            // Interval Auto-Sync setiap 15 detik
+            syncTimer = setInterval(() => {
+                // Jangan lakukan auto-sync jika pengguna SEDANG mengisi laporan atau mengedit sesuatu
+                if (!isEditing()) {
+                    syncData(true);
+                }
+            }, 15000);
+        }
+
+        // Cek aktivitas pengguna agar inputan/pilihan tidak tertimpa sinkronisasi otomatis
+        function isEditing() {
+            const sedangEditForm = Object.values(editIdx).some(val => val !== -1);
+            const modalTerbuka = !document.getElementById('modal').classList.contains('hidden');
+            const lagiDiTabAdd = document.getElementById('add').classList.contains('tab-active'); // Jika di menu tambah laporan
+            
+            return sedangEditForm || modalTerbuka || isSaving || lagiDiTabAdd; 
+        }
 
         // Tab Navigasi
         function showTab(id, el) {
@@ -140,20 +174,19 @@
         }
 
         // --- Fitur Google Sheet Sync ---
-        async function syncData() {
+        async function syncData(isBackground = false) {
             const icon = document.getElementById('syncIcon');
             const status = document.getElementById('statusMsg');
+            
             icon.classList.add('spin');
-            status.innerText = "Syncing...";
+            if (!isBackground) status.innerText = "Syncing...";
             
             try {
-                // Menggunakan fetch standar. Error "Failed to fetch" 99% terjadi karena Web App diset selain "Anyone"
                 const response = await fetch(WEB_APP_URL + "?action=getData");
                 if (!response.ok) throw new Error('HTTP error ' + response.status);
                 
                 const result = await response.json();
                 
-                // Mencegah list menjadi kosong jika sheet masih baru/kosong
                 if(result.cabin) data.cabin = result.cabin;
                 if(result.eng) data.eng = result.eng;
                 if(result.air) data.air = result.air;
@@ -161,39 +194,76 @@
 
                 renderAll();
                 updateDropdowns();
-                status.innerText = "Terhubung";
-                status.classList.remove('text-red-400');
-                status.classList.add('text-gray-400');
-            } catch (err) {
-                console.error("Gagal sinkronisasi:", err);
-                status.innerText = "Mode Offline (Cek Akses GAS)";
-                status.classList.remove('text-gray-400');
-                status.classList.add('text-red-400');
                 
-                // Munculkan popup edukasi jika terjadi Failed to fetch (CORS / Pengaturan Akses)
-                if(err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
-                    showGasWarning();
+                if (!isBackground) {
+                    status.innerText = "Terhubung";
+                    status.classList.remove('text-red-400');
+                    status.classList.add('text-gray-400');
                 }
-
-                // Render data lokal apa adanya jika gagal
+            } catch (err) {
+                // Menggunakan console.warn agar tidak memicu error log merah di sistem
+                console.warn("Sinkronisasi gagal (mungkin offline atau URL tidak valid):", err.message);
+                
+                if (!isBackground) {
+                    status.innerText = "Mode Offline (Cek Akses GAS)";
+                    status.classList.remove('text-gray-400');
+                    status.classList.add('text-red-400');
+                    
+                    if(err.message.includes("Failed to fetch") || err.message.includes("NetworkError") || err.message.includes("404")) {
+                        showGasWarning();
+                    }
+                }
                 renderAll();
                 updateDropdowns();
             } finally {
                 icon.classList.remove('spin');
-                setTimeout(() => { if(status.innerText === "Terhubung") status.innerText = ""; }, 3000);
+                if (!isBackground) {
+                    setTimeout(() => { if(status.innerText === "Terhubung") status.innerText = ""; }, 3000);
+                }
             }
         }
 
         async function saveToSheet(sheetName, itemData) {
+            isSaving = true; 
+            const icon = document.getElementById('syncIcon');
+            icon.classList.add('spin'); 
             try {
-                // Gunakan text/plain agar browser tidak mengirimkan preflight request OPTIONS yang sering diblokir GAS
                 await fetch(WEB_APP_URL, {
                     method: 'POST',
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action: 'save', sheet: sheetName, data: itemData })
                 });
+                
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                await syncData(true);
             } catch (err) {
                 console.error("Gagal simpan ke sheet:", err);
+            } finally {
+                icon.classList.remove('spin');
+                isSaving = false;
+            }
+        }
+
+        async function syncUpdateAll(sheetName) {
+            isSaving = true; 
+            const icon = document.getElementById('syncIcon');
+            icon.classList.add('spin'); 
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'updateAll', sheet: sheetName, data: data[sheetName] })
+                });
+                
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                await syncData(true);
+            } catch (err) {
+                console.warn("Gagal update semua data ke sheet:", err);
+            } finally {
+                icon.classList.remove('spin');
+                isSaving = false;
             }
         }
 
@@ -201,18 +271,19 @@
             document.getElementById('modalTitle').innerText = "Koneksi Google Sheet Gagal";
             document.getElementById('modalContent').innerHTML = `
                 <div class="bg-red-500/20 p-4 rounded-xl border border-red-500/50 text-sm">
-                    <p class="font-bold text-red-400 mb-2">Error "Failed to fetch" (CORS Blocked).</p>
-                    <p class="mb-2">Ini karena Google Apps Script (GAS) memblokir akses. Untuk memperbaikinya, pastikan pengaturan Deploy Anda:</p>
+                    <p class="font-bold text-red-400 mb-2">Error Akses Data (Misal: 404 atau CORS Blocked).</p>
+                    <p class="mb-2">Ini biasanya terjadi karena Link Google Apps Script (WEB_APP_URL) belum diubah ke link Anda sendiri, atau script telah dihapus/diperbarui. Untuk memperbaikinya:</p>
                     <ol class="list-decimal ml-5 space-y-1">
                         <li>Buka Google Script Anda, klik <b>Deploy</b> > <b>New Deployment</b>.</li>
                         <li>Pilih tipe <b>Web App</b>.</li>
                         <li><b>Execute as:</b> Me (Email Anda).</li>
-                        <li><b>Who has access:</b> <span class="text-yellow-300 font-bold bg-black/30 px-1 rounded">Anyone</span> (Jangan pilih "Anyone with Google Account").</li>
-                        <li>Klik Deploy, lalu salin URL Web App yang baru (karena URL bisa berubah) dan perbarui variabel <code>WEB_APP_URL</code> di kode ini.</li>
+                        <li><b>Who has access:</b> <span class="text-yellow-300 font-bold bg-black/30 px-1 rounded">Anyone</span>.</li>
+                        <li>Klik Deploy, lalu salin URL Web App yang baru.</li>
+                        <li>Ganti link pada variabel <code class="bg-black/50 px-1 rounded text-yellow-200">WEB_APP_URL</code> di dalam kode HTML ini dengan link milik Anda.</li>
                     </ol>
                 </div>
                 <div class="mt-6 flex gap-2">
-                    <button onclick="closeModal()" class="bg-gray-600 px-6 py-2 rounded-lg font-bold">Mengerti & Gunakan Mode Offline</button>
+                    <button onclick="closeModal()" class="bg-gray-600 px-6 py-2 rounded-lg font-bold">Mengerti</button>
                 </div>
             `;
             document.getElementById('modal').classList.remove('hidden');
@@ -239,18 +310,27 @@
             const rSel = document.getElementById('receivedBy');
             const aSel = document.getElementById('repReg');
             
+            // Simpan nilai lama sebelum dirender ulang agar tidak hilang
+            const currentH = hSel.value;
+            const currentR = rSel.value;
+            const currentA = aSel.value;
+            
             [hSel, rSel].forEach(sel => {
                 sel.innerHTML = '<option value="">Pilih Nama...</option>';
-                data.cabin.forEach(c => sel.innerHTML += `<option>${c.name} (Cs.)</option>`);
-                data.eng.forEach(e => sel.innerHTML += `<option>${e.name} (Eng.)</option>`);
+                data.cabin.forEach(c => sel.innerHTML += `<option value="${c.name} (Cs.)">${c.name} (Cs.)</option>`);
+                data.eng.forEach(e => sel.innerHTML += `<option value="${e.name} (Eng.)">${e.name} (Eng.)</option>`);
             });
             
             aSel.innerHTML = '<option value="">Pilih Pesawat...</option>';
-            data.air.forEach(a => aSel.innerHTML += `<option>${a.name}</option>`);
+            data.air.forEach(a => aSel.innerHTML += `<option value="${a.name}">${a.name}</option>`);
+            
+            // Pasang kembali nilai lama
+            if(currentH) hSel.value = currentH;
+            if(currentR) rSel.value = currentR;
+            if(currentA) aSel.value = currentA;
         }
 
         // --- Logika Fitur Laporan (Reports) ---
-        // Fungsi helper untuk kompresi dan konversi file gambar ke Base64
         const getBase64 = (file) => new Promise((resolve, reject) => {
             if (!file) return resolve('');
             const reader = new FileReader();
@@ -260,8 +340,10 @@
                 img.src = event.target.result;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 800; // Maksimal resolusi
-                    const MAX_HEIGHT = 800;
+                    
+                    // KOMPRESI EKSTRA KETAT: Resolusi diturunkan jadi 400px (Aman untuk Google Sheet)
+                    const MAX_WIDTH = 400; 
+                    const MAX_HEIGHT = 400;
                     let width = img.width;
                     let height = img.height;
 
@@ -276,7 +358,9 @@
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.6)); // Kompresi JPEG 60% agar muat di Google Sheet
+                    
+                    // Kualitas JPEG diturunkan menjadi 0.4 (40%) agar ukuran string Base64 pendek
+                    resolve(canvas.toDataURL('image/jpeg', 0.4)); 
                 };
                 img.onerror = (error) => reject(error);
             };
@@ -284,7 +368,6 @@
         });
 
         async function submitReport() {
-            // Ubah tombol menjadi loading state
             const btn = document.getElementById('submitBtn');
             btn.innerText = "Processing...";
             btn.disabled = true;
@@ -292,14 +375,13 @@
             const imageEntries = Array.from(document.querySelectorAll('.image-entry'));
             const images = [];
 
-            // Proses setiap baris input gambar
             for (let div of imageEntries) {
                 const pos = div.querySelector('input[type="text"]').value;
                 const cond = div.querySelectorAll('input[type="text"]')[1].value;
                 const fileInput = div.querySelector('input[type="file"]');
                 const existingFile = div.querySelector('.existing-file')?.value || '';
                 
-                let fileData = existingFile; // Gunakan file lama jika sedang mode edit dan tidak upload ulang
+                let fileData = existingFile; 
                 if (fileInput && fileInput.files.length > 0) {
                     fileData = await getBase64(fileInput.files[0]);
                 }
@@ -320,13 +402,13 @@
             if(editIdx.report >= 0) { 
                 data.reports[editIdx.report] = r; 
                 editIdx.report = -1; 
+                syncUpdateAll('reports');
             } else { 
                 data.reports.push(r); 
-                saveToSheet('reports', r); // Simpan ke GS
+                saveToSheet('reports', r);
             }
             
             document.getElementById('reportForm').reset();
-            // Bersihkan input gambar kecuali judulnya
             const imgContainer = document.getElementById('image-reports');
             imgContainer.innerHTML = '<h3 class="text-lg border-b border-white/10 pb-2">Detail Gambar</h3>';
             
@@ -365,20 +447,177 @@
             document.getElementById('modalContent').innerHTML = `
                 <div class="grid grid-cols-2 gap-4 text-sm">
                     <p><b class="text-blue-400">Date:</b><br>${formatTanggal(r.date)}</p>
-                    <p><b class="text-blue-400">Route:</b><br>${r.route}</p>
-                    <p><b class="text-blue-400">Aircraft:</b><br>${r.reg}</p>
-                    <p><b class="text-blue-400">Type:</b><br>${r.type}</p>
-                    <p><b class="text-blue-400">Handover:</b><br>${r.handover}</p>
-                    <p><b class="text-blue-400">Received:</b><br>${r.received}</p>
+                    <p><b class="text-blue-400">Route:</b><br>${r.route || '-'}</p>
+                    <p><b class="text-blue-400">Aircraft:</b><br>${r.reg || '-'}</p>
+                    <p><b class="text-blue-400">Type:</b><br>${r.type || '-'}</p>
+                    <p><b class="text-blue-400">Handover:</b><br>${r.handover || '-'}</p>
+                    <p><b class="text-blue-400">Received:</b><br>${r.received || '-'}</p>
                 </div>
                 <div class="mt-6"><b class="text-blue-400">Detail Gambar/Kondisi:</b><div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">${imagesHtml}</div></div>
-                <div class="mt-8 flex gap-2">
+                <div class="mt-8 flex flex-wrap gap-2">
                     <button onclick="editReport(${idx})" class="bg-yellow-600 px-6 py-2 rounded-lg font-bold">Edit</button>
                     <button onclick="duplicateReport(${idx})" class="bg-blue-600 px-6 py-2 rounded-lg font-bold">Duplicate</button>
+                    <!-- Tambahkan tombol cetak PDF -->
+                    <button id="btn-print-${idx}" onclick="downloadPDF(${idx})" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-lg font-bold transition">Cetak PDF</button>
                 </div>
             `;
             document.getElementById('modal').classList.remove('hidden');
             document.getElementById('modal').classList.add('flex');
+        }
+
+        // Fungsi baru untuk menghasilkan dokumen PDF A4 yang rapi dan profesional
+        async function downloadPDF(idx) {
+            const r = data.reports[idx];
+            const btn = document.getElementById(`btn-print-${idx}`);
+            const originalText = btn.innerText;
+            btn.innerText = "Memproses PDF...";
+            btn.disabled = true;
+
+            // Fungsi bantu untuk mengambil URL tanda tangan khusus PDF
+            function getSignatureImgUrlForPdf(fullName) {
+                if (!fullName || fullName === '-') return '';
+                // Hapus embel-embel (Cs.) atau (Eng.) untuk pencarian di database
+                let name = fullName.replace(' (Cs.)', '').replace(' (Eng.)', '');
+                let db = fullName.includes('(Cs.)') ? data.cabin : (fullName.includes('(Eng.)') ? data.eng : []);
+                
+                const person = db.find(p => p.name === name);
+                if (person && person.url) {
+                    const driveRegex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|docs\.google\.com\/.*?id=)([a-zA-Z0-9_-]+)/;
+                    const match = person.url.match(driveRegex);
+                    if (match && match[1]) {
+                        // KUNCI KECEPATAN: Gunakan Thumbnail API (w400) agar sangat ringan dan cepat diload oleh proxy
+                        return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w400`;
+                    }
+                    return person.url;
+                }
+                return '';
+            }
+
+            // Fungsi bantu untuk mem-bypass CORS secara efisien
+            async function fetchImageAsBase64(url) {
+                if (!url) return '';
+                try {
+                    // Gunakan allorigins karena paling stabil dan cepat untuk Thumbnail Google Drive
+                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                    
+                    const res = await fetch(proxyUrl);
+                    if (!res.ok) throw new Error("Gagal mengambil gambar dari proxy");
+                    
+                    const blob = await res.blob();
+                    return await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (err) {
+                    console.warn("Gambar tanda tangan gagal dimuat untuk PDF:", err);
+                    return ''; // Jika gagal, kembalikan kosong agar PDF tetap bisa dicetak
+                }
+            }
+
+            const handoverSignUrl = getSignatureImgUrlForPdf(r.handover);
+            const receivedSignUrl = getSignatureImgUrlForPdf(r.received);
+
+            // KUNCI KECEPATAN: Proses fetch gambar secara BERSAMAAN (Paralel) menggunakan Promise.all
+            // Ini akan memangkas waktu loading hingga 50% lebih cepat
+            const [handoverB64, receivedB64] = await Promise.all([
+                fetchImageAsBase64(handoverSignUrl),
+                fetchImageAsBase64(receivedSignUrl)
+            ]);
+
+            const handoverSignHtml = handoverB64 
+                ? `<img src="${handoverB64}" style="max-height: 80px; max-width: 150px; display: block; margin: 0 auto 10px auto; object-fit: contain;" />` 
+                : `<div style="height: 80px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #999;">(Tanda tangan tidak tersedia)</div>`;
+            
+            const receivedSignHtml = receivedB64 
+                ? `<img src="${receivedB64}" style="max-height: 80px; max-width: 150px; display: block; margin: 0 auto 10px auto; object-fit: contain;" />` 
+                : `<div style="height: 80px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #999;">(Tanda tangan tidak tersedia)</div>`;
+
+            // Template khusus cetak PDF (Background putih, teks hitam, format tabel)
+            let pdfImagesHtml = '';
+            if (r.images && r.images.length > 0) {
+                pdfImagesHtml = r.images.map(img => `
+                    <div style="page-break-inside: avoid; border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px; background: #fafafa;">
+                        <p style="margin: 0 0 5px 0;"><strong>Posisi / Fasilitas:</strong> ${img.pos}</p>
+                        <p style="margin: 0 0 10px 0;"><strong>Kondisi Ditemukan:</strong> ${img.cond}</p>
+                        ${img.fileData ? `<img src="${img.fileData}" style="max-height: 250px; border-radius: 4px; display: block; margin-top: 10px; border: 1px solid #eee;" />` : ''}
+                    </div>
+                `).join('');
+            } else {
+                pdfImagesHtml = '<p style="font-style: italic; color: #666;">Tidak ada catatan gambar atau kerusakan terlampir.</p>';
+            }
+
+            const printContainer = document.createElement('div');
+            printContainer.innerHTML = `
+                <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; background: #fff; width: 100%;">
+                    <h1 style="text-align: center; color: #1e293b; border-bottom: 3px solid #1e293b; padding-bottom: 15px; margin-bottom: 30px; font-size: 24px; letter-spacing: 2px;">
+                        ECREW HANDOVER CABIN REPORT
+                    </h1>
+                    
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd; background: #f8fafc; width: 35%;"><strong>Tanggal & Waktu</strong></td>
+                            <td style="padding: 12px; border: 1px solid #ddd;">${formatTanggal(r.date)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd; background: #f8fafc;"><strong>Jenis Pengecekan</strong></td>
+                            <td style="padding: 12px; border: 1px solid #ddd;">${r.type || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd; background: #f8fafc;"><strong>Rute Penerbangan</strong></td>
+                            <td style="padding: 12px; border: 1px solid #ddd;">${r.route || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd; background: #f8fafc;"><strong>Registrasi Pesawat</strong></td>
+                            <td style="padding: 12px; border: 1px solid #ddd;">${r.reg || '-'}</td>
+                        </tr>
+                    </table>
+
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; text-align: center; font-size: 14px;">
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd; background: #f8fafc; width: 50%;"><strong>Handover By (Diserahkan Oleh)</strong></td>
+                            <td style="padding: 12px; border: 1px solid #ddd; background: #f8fafc; width: 50%;"><strong>Received By (Diterima Oleh)</strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd; height: 120px; vertical-align: bottom;">
+                                ${handoverSignHtml}
+                                <strong>${r.handover || '-'}</strong>
+                            </td>
+                            <td style="padding: 12px; border: 1px solid #ddd; height: 120px; vertical-align: bottom;">
+                                ${receivedSignHtml}
+                                <strong>${r.received || '-'}</strong>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <h2 style="font-size: 18px; color: #1e293b; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
+                        Detail Kondisi Kabin & Dokumentasi
+                    </h2>
+                    <div>
+                        ${pdfImagesHtml}
+                    </div>
+                </div>
+            `;
+
+            // Opsi untuk PDF A4
+            const opt = {
+                margin:       0.75, // Mengatur margin 0.75 inci untuk semua sisi (berlaku di setiap halaman)
+                filename:     `Handover_Report_${r.reg || 'Pesawat'}_${r.date.split('T')[0] || 'Date'}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Proses rendering dari elemen rahasia ke PDF
+            html2pdf().set(opt).from(printContainer).save().then(() => {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }).catch(err => {
+                console.error("Gagal mencetak PDF:", err);
+                alert("Gagal mencetak dokumen.");
+                btn.innerText = originalText;
+                btn.disabled = false;
+            });
         }
 
         function editReport(idx) {
@@ -390,7 +629,6 @@
             document.getElementById('handoverBy').value = r.handover;
             document.getElementById('receivedBy').value = r.received;
             
-            // Restore images if available (simplified for edit mode)
             const imgContainer = document.getElementById('image-reports');
             imgContainer.innerHTML = '<h3 class="text-lg border-b border-white/10 pb-2">Detail Gambar</h3>';
             if(r.images) {
@@ -408,7 +646,7 @@
         function duplicateReport(idx) {
             const duplicated = {...data.reports[idx]};
             data.reports.push(duplicated);
-            saveToSheet('reports', duplicated); // Simpan duplikat ke GS
+            saveToSheet('reports', duplicated);
             renderReports();
             closeModal();
         }
@@ -443,9 +681,10 @@
                 if(editIdx[type] >= 0) { 
                     data[type][editIdx[type]] = itemData; 
                     editIdx[type] = -1; 
+                    syncUpdateAll(type);
                 } else { 
                     data[type].push(itemData); 
-                    saveToSheet(type, itemData); // Simpan ke GS
+                    saveToSheet(type, itemData);
                 }
                 
                 cancelEdit(type); 
@@ -488,12 +727,48 @@
             }
         }
 
+        // Fungsi untuk mengonversi URL Google Drive menjadi Direct Image Link
+        function getDriveDirectLink(url) {
+            if (!url) return '';
+            // Mencari ID file dari tautan Google Drive
+            const driveRegex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|docs\.google\.com\/.*?id=)([a-zA-Z0-9_-]+)/;
+            const match = url.match(driveRegex);
+            if (match && match[1]) {
+                // MENGGUNAKAN THUMBNAIL API: Lebih stabil dan tidak terblokir oleh aturan keamanan cookie browser baru
+                return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
+            }
+            return url; 
+        }
+
         function openModal(type, index) {
             const item = data[type][index];
             document.getElementById('modalTitle').innerText = "Detail Data";
+
+            let imgPreview = '';
+            // Hanya tampilkan preview gambar untuk Cabin dan Engineer
+            if (type === 'cabin' || type === 'eng') {
+                const directUrl = getDriveDirectLink(item.url);
+                if (directUrl && (directUrl.startsWith('http'))) {
+                    imgPreview = `
+                        <div class="mt-4">
+                            <b class="text-blue-400">Preview Tanda Tangan:</b><br>
+                            <div class="mt-2 p-2 bg-white rounded border border-gray-300">
+                                <img src="${directUrl}" 
+                                     class="max-h-48 w-full object-contain" 
+                                     alt="Tanda Tangan" 
+                                     onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22150%22%20height%3D%22150%22%20viewBox%3D%220%200%20150%20150%22%3E%3Crect%20fill%3D%22%23ddd%22%20width%3D%22150%22%20height%3D%22150%22%2F%3E%3Ctext%20fill%3D%22%23555%22%20font-family%3D%22sans-serif%22%20font-size%3D%2212%22%20dy%3D%2210.5%22%20font-weight%3D%22bold%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%3EGambar%20Tidak%20Ditemukan%3C%2Ftext%3E%3C%2Fsvg%3E';">
+                            </div>
+                            <p class="text-xs text-yellow-300 mt-2 italic">
+                                *Jika gambar tidak muncul, pastikan link Google Drive sudah di-set ke <b>"Anyone with the link" (Siapa saja yang memiliki link)</b>.
+                            </p>
+                        </div>`;
+                }
+            }
+
             document.getElementById('modalContent').innerHTML = `
                 <p class="mb-2"><b class="text-blue-400">Data Name:</b> <br> ${item.name}</p>
-                <p><b class="text-blue-400">Sign URL / Info:</b> <br> <span class="break-words">${item.url}</span></p>
+                <p><b class="text-blue-400">Sign URL / Info:</b> <br> <span class="break-words text-sm text-gray-300">${item.url}</span></p>
+                ${imgPreview}
                 <div class="mt-8 flex gap-2">
                     <button onclick="editEntry('${type}', ${index})" class="bg-yellow-600 px-6 py-2 rounded-lg font-bold">Edit</button>
                     <button onclick="deleteEntry('${type}', ${index})" class="bg-red-600 px-6 py-2 rounded-lg font-bold">Delete</button>
@@ -519,8 +794,7 @@
 
         function deleteEntry(type, index) { 
             data[type].splice(index, 1); 
-            // Note: Delete on GS requires more complex Script implementation. 
-            // This currently deletes it locally.
+            syncUpdateAll(type);
             renderList(type); 
             updateDropdowns(); 
             closeModal(); 
