@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecrew-Hand Over Cabin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
+        .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .nav-active { border-bottom: 2px solid #60a5fa; color: #60a5fa; }
+        .tab-content { display: none; }
+        .tab-active { display: block; }
+        input, select { background: rgba(0,0,0,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.1) !important; }
+        input::placeholder { color: #94a3b8; }
+        table { border-collapse: separate; border-spacing: 0 10px; }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="p-4 md:p-8" onload="syncData()">
+
+    <header class="max-w-5xl mx-auto mb-8 flex justify-between items-center">
+        <h1 class="text-2xl font-light tracking-widest">ECREW HANDOVER</h1>
+        <div class="flex items-center gap-4">
+            <span id="statusMsg" class="text-xs text-gray-400"></span>
+            <button id="syncBtn" onclick="syncData()" class="p-2 glass rounded-full hover:bg-white/20 transition">
+                <svg id="syncIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <nav class="max-w-5xl mx-auto glass rounded-full px-6 py-3 mb-8">
+        <ul class="flex justify-center space-x-4 flex-wrap text-sm">
+            <li class="cursor-pointer hover:text-blue-400 nav-item nav-active" onclick="showTab('list', this)">Data Handover</li>
+            <li class="cursor-pointer hover:text-blue-400 nav-item" onclick="showTab('add', this)">Add New Report</li>
+            <li class="cursor-pointer hover:text-blue-400 nav-item" onclick="showTab('cabin', this)">DB Cabin</li>
+            <li class="cursor-pointer hover:text-blue-400 nav-item" onclick="showTab('engineer', this)">DB Engineer</li>
+            <li class="cursor-pointer hover:text-blue-400 nav-item" onclick="showTab('aircraft', this)">DB Aircraft</li>
+        </ul>
+    </nav>
+
+    <main class="max-w-5xl mx-auto glass rounded-3xl p-8">
+        <!-- Tab Data Handover -->
+        <div id="list" class="tab-content tab-active">
+            <h2 class="text-xl font-medium mb-6">Daftar Laporan Terkini</h2>
+            <div id="handoverList" class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead><tr class="text-gray-400 border-b border-white/10"><th>Date</th><th>Route</th><th>Reg</th><th>Handover By</th><th>Received By</th></tr></thead>
+                    <tbody id="handoverTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab Add New Report -->
+        <div id="add" class="tab-content">
+            <h2 id="formTitle" class="text-xl font-medium mb-6">Tambah Laporan Baru</h2>
+            <form id="reportForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="datetime-local" id="repDate" class="w-full p-3 rounded-xl">
+                <select id="repType" class="w-full p-3 rounded-xl">
+                    <option>Flight Out</option>
+                    <option>Flight Return</option>
+                </select>
+                <input type="text" id="repRoute" placeholder="Route" class="w-full p-3 rounded-xl">
+                <select id="repReg" class="w-full p-3 rounded-xl"><option value="">Pilih Registrasi Pesawat</option></select>
+                <select id="handoverBy" class="w-full p-3 rounded-xl"><option value="">Handover By</option></select>
+                <select id="receivedBy" class="w-full p-3 rounded-xl"><option value="">Received By</option></select>
+                
+                <div id="image-reports" class="md:col-span-2 space-y-4 mt-4">
+                    <h3 class="text-lg border-b border-white/10 pb-2">Detail Gambar</h3>
+                </div>
+                
+                <button type="button" onclick="addImageField()" class="md:col-span-2 bg-gray-600 hover:bg-gray-500 py-2 rounded-xl transition">+ Tambah Input Gambar</button>
+                <button type="button" id="submitBtn" onclick="submitReport()" class="md:col-span-2 bg-blue-600 hover:bg-blue-500 py-3 rounded-xl transition">Submit Report</button>
+            </form>
+        </div>
+
+        <!-- Tab DB Cabin -->
+        <div id="cabin" class="tab-content">
+            <h2 class="text-xl font-medium mb-6">Database Cabin Crew</h2>
+            <form id="cabinForm" class="space-y-4 mb-8">
+                <input type="text" id="cabinName" placeholder="Name" class="w-full p-3 rounded-xl">
+                <input type="text" id="cabinUrl" placeholder="Sign URL" class="w-full p-3 rounded-xl">
+                <div id="cabinFormButtons" class="flex gap-2">
+                    <button type="button" onclick="saveData('cabin')" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl transition">Save</button>
+                </div>
+            </form>
+            <div id="cabinList" class="space-y-2"></div>
+        </div>
+
+        <!-- Tab DB Engineer -->
+        <div id="engineer" class="tab-content">
+            <h2 class="text-xl font-medium mb-6">Database Engineer</h2>
+            <form id="engForm" class="space-y-4 mb-8">
+                <input type="text" id="engName" placeholder="Name" class="w-full p-3 rounded-xl">
+                <input type="text" id="engUrl" placeholder="Sign URL" class="w-full p-3 rounded-xl">
+                <div id="engFormButtons" class="flex gap-2">
+                    <button type="button" onclick="saveData('eng')" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl transition">Save</button>
+                </div>
+            </form>
+            <div id="engList" class="space-y-2"></div>
+        </div>
+
+        <!-- Tab DB Aircraft -->
+        <div id="aircraft" class="tab-content">
+            <h2 class="text-xl font-medium mb-6">Database Aircraft</h2>
+            <form id="airForm" class="space-y-4 mb-8">
+                <input type="text" id="airName" placeholder="Registration (e.g. PK-GIA)" class="w-full p-3 rounded-xl">
+                <input type="text" id="airType" placeholder="Aircraft Type" class="w-full p-3 rounded-xl">
+                <div id="airFormButtons" class="flex gap-2">
+                    <button type="button" onclick="saveData('air')" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl transition">Save</button>
+                </div>
+            </form>
+            <div id="airList" class="space-y-2"></div>
+        </div>
+    </main>
+
+    <!-- Modal Pop-Up Global -->
+    <div id="modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center backdrop-blur-sm p-4 z-50">
+        <div class="glass p-8 rounded-3xl w-full max-w-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-300 hover:text-white font-bold text-xl">✕</button>
+            <h2 class="text-2xl font-bold mb-6 border-b border-white/20 pb-4" id="modalTitle">Detail Data</h2>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbynx0EGY550Fe1GFcOAWIdSlNCsXPDuRwprtRTjCcwrNHcTeiAuLyGdm9CvpI9xpyrW/exec";
+        
+        // State lokal aplikasi
+        let data = { cabin: [], eng: [], air: [], reports: [] };
+        let editIdx = { cabin: -1, eng: -1, air: -1, report: -1 };
+
+        // Tab Navigasi
+        function showTab(id, el) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('tab-active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('nav-active'));
+            document.getElementById(id).classList.add('tab-active');
+            el.classList.add('nav-active');
+        }
+
+        // --- Fitur Google Sheet Sync ---
+        async function syncData() {
+            const icon = document.getElementById('syncIcon');
+            const status = document.getElementById('statusMsg');
+            icon.classList.add('spin');
+            status.innerText = "Syncing...";
+            
+            try {
+                // Menggunakan fetch standar. Error "Failed to fetch" 99% terjadi karena Web App diset selain "Anyone"
+                const response = await fetch(WEB_APP_URL + "?action=getData");
+                if (!response.ok) throw new Error('HTTP error ' + response.status);
+                
+                const result = await response.json();
+                
+                // Mencegah list menjadi kosong jika sheet masih baru/kosong
+                if(result.cabin) data.cabin = result.cabin;
+                if(result.eng) data.eng = result.eng;
+                if(result.air) data.air = result.air;
+                if(result.reports) data.reports = result.reports;
+
+                renderAll();
+                updateDropdowns();
+                status.innerText = "Terhubung";
+                status.classList.remove('text-red-400');
+                status.classList.add('text-gray-400');
+            } catch (err) {
+                console.error("Gagal sinkronisasi:", err);
+                status.innerText = "Mode Offline (Cek Akses GAS)";
+                status.classList.remove('text-gray-400');
+                status.classList.add('text-red-400');
+                
+                // Munculkan popup edukasi jika terjadi Failed to fetch (CORS / Pengaturan Akses)
+                if(err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+                    showGasWarning();
+                }
+
+                // Render data lokal apa adanya jika gagal
+                renderAll();
+                updateDropdowns();
+            } finally {
+                icon.classList.remove('spin');
+                setTimeout(() => { if(status.innerText === "Terhubung") status.innerText = ""; }, 3000);
+            }
+        }
+
+        async function saveToSheet(sheetName, itemData) {
+            try {
+                // Gunakan text/plain agar browser tidak mengirimkan preflight request OPTIONS yang sering diblokir GAS
+                await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'save', sheet: sheetName, data: itemData })
+                });
+            } catch (err) {
+                console.error("Gagal simpan ke sheet:", err);
+            }
+        }
+
+        function showGasWarning() {
+            document.getElementById('modalTitle').innerText = "Koneksi Google Sheet Gagal";
+            document.getElementById('modalContent').innerHTML = `
+                <div class="bg-red-500/20 p-4 rounded-xl border border-red-500/50 text-sm">
+                    <p class="font-bold text-red-400 mb-2">Error "Failed to fetch" (CORS Blocked).</p>
+                    <p class="mb-2">Ini karena Google Apps Script (GAS) memblokir akses. Untuk memperbaikinya, pastikan pengaturan Deploy Anda:</p>
+                    <ol class="list-decimal ml-5 space-y-1">
+                        <li>Buka Google Script Anda, klik <b>Deploy</b> > <b>New Deployment</b>.</li>
+                        <li>Pilih tipe <b>Web App</b>.</li>
+                        <li><b>Execute as:</b> Me (Email Anda).</li>
+                        <li><b>Who has access:</b> <span class="text-yellow-300 font-bold bg-black/30 px-1 rounded">Anyone</span> (Jangan pilih "Anyone with Google Account").</li>
+                        <li>Klik Deploy, lalu salin URL Web App yang baru (karena URL bisa berubah) dan perbarui variabel <code>WEB_APP_URL</code> di kode ini.</li>
+                    </ol>
+                </div>
+                <div class="mt-6 flex gap-2">
+                    <button onclick="closeModal()" class="bg-gray-600 px-6 py-2 rounded-lg font-bold">Mengerti & Gunakan Mode Offline</button>
+                </div>
+            `;
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal').classList.add('flex');
+        }
+
+        // --- Render UI ---
+        function renderAll() {
+            renderReports();
+            renderList('cabin');
+            renderList('eng');
+            renderList('air');
+        }
+
+        function formatTanggal(dateStr) {
+            if (!dateStr) return "-";
+            const d = new Date(dateStr);
+            const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} / ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        }
+
+        function updateDropdowns() {
+            const hSel = document.getElementById('handoverBy');
+            const rSel = document.getElementById('receivedBy');
+            const aSel = document.getElementById('repReg');
+            
+            [hSel, rSel].forEach(sel => {
+                sel.innerHTML = '<option value="">Pilih Nama...</option>';
+                data.cabin.forEach(c => sel.innerHTML += `<option>${c.name} (Cs.)</option>`);
+                data.eng.forEach(e => sel.innerHTML += `<option>${e.name} (Eng.)</option>`);
+            });
+            
+            aSel.innerHTML = '<option value="">Pilih Pesawat...</option>';
+            data.air.forEach(a => aSel.innerHTML += `<option>${a.name}</option>`);
+        }
+
+        // --- Logika Fitur Laporan (Reports) ---
+        // Fungsi helper untuk kompresi dan konversi file gambar ke Base64
+        const getBase64 = (file) => new Promise((resolve, reject) => {
+            if (!file) return resolve('');
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800; // Maksimal resolusi
+                    const MAX_HEIGHT = 800;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height && width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    } else if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.6)); // Kompresi JPEG 60% agar muat di Google Sheet
+                };
+                img.onerror = (error) => reject(error);
+            };
+            reader.onerror = (error) => reject(error);
+        });
+
+        async function submitReport() {
+            // Ubah tombol menjadi loading state
+            const btn = document.getElementById('submitBtn');
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+
+            const imageEntries = Array.from(document.querySelectorAll('.image-entry'));
+            const images = [];
+
+            // Proses setiap baris input gambar
+            for (let div of imageEntries) {
+                const pos = div.querySelector('input[type="text"]').value;
+                const cond = div.querySelectorAll('input[type="text"]')[1].value;
+                const fileInput = div.querySelector('input[type="file"]');
+                const existingFile = div.querySelector('.existing-file')?.value || '';
+                
+                let fileData = existingFile; // Gunakan file lama jika sedang mode edit dan tidak upload ulang
+                if (fileInput && fileInput.files.length > 0) {
+                    fileData = await getBase64(fileInput.files[0]);
+                }
+                
+                images.push({ pos, cond, fileData });
+            }
+
+            const r = {
+                date: document.getElementById('repDate').value,
+                type: document.getElementById('repType').value,
+                route: document.getElementById('repRoute').value,
+                reg: document.getElementById('repReg').value,
+                handover: document.getElementById('handoverBy').value,
+                received: document.getElementById('receivedBy').value,
+                images: images
+            };
+
+            if(editIdx.report >= 0) { 
+                data.reports[editIdx.report] = r; 
+                editIdx.report = -1; 
+            } else { 
+                data.reports.push(r); 
+                saveToSheet('reports', r); // Simpan ke GS
+            }
+            
+            document.getElementById('reportForm').reset();
+            // Bersihkan input gambar kecuali judulnya
+            const imgContainer = document.getElementById('image-reports');
+            imgContainer.innerHTML = '<h3 class="text-lg border-b border-white/10 pb-2">Detail Gambar</h3>';
+            
+            btn.innerText = "Submit Report";
+            btn.disabled = false;
+            
+            renderReports();
+            showTab('list', document.querySelectorAll('.nav-item')[0]);
+        }
+
+        function renderReports() {
+            document.getElementById('handoverTableBody').innerHTML = data.reports.map((r, i) => `
+                <tr class="glass cursor-pointer hover:bg-white/20" onclick="openReportModal(${i})">
+                    <td class="p-4">${formatTanggal(r.date)}</td>
+                    <td class="p-4">${r.route || '-'}</td>
+                    <td class="p-4">${r.reg || '-'}</td>
+                    <td class="p-4">${r.handover || '-'}</td>
+                    <td class="p-4">${r.received || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function openReportModal(idx) {
+            const r = data.reports[idx];
+            document.getElementById('modalTitle').innerText = "Detail Laporan";
+            let imagesHtml = (r.images && r.images.length > 0) 
+                ? r.images.map(img => `
+                    <div class="bg-white/5 p-3 rounded-lg text-sm mb-2 border border-white/10">
+                        <p><b>Posisi:</b> ${img.pos}</p>
+                        <p><b>Kondisi:</b> ${img.cond}</p>
+                        ${img.fileData ? `<img src="${img.fileData}" class="mt-2 rounded max-h-40 object-contain w-full bg-black/20">` : ''}
+                    </div>
+                  `).join('') 
+                : 'Tidak ada data gambar';
+            
+            document.getElementById('modalContent').innerHTML = `
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <p><b class="text-blue-400">Date:</b><br>${formatTanggal(r.date)}</p>
+                    <p><b class="text-blue-400">Route:</b><br>${r.route}</p>
+                    <p><b class="text-blue-400">Aircraft:</b><br>${r.reg}</p>
+                    <p><b class="text-blue-400">Type:</b><br>${r.type}</p>
+                    <p><b class="text-blue-400">Handover:</b><br>${r.handover}</p>
+                    <p><b class="text-blue-400">Received:</b><br>${r.received}</p>
+                </div>
+                <div class="mt-6"><b class="text-blue-400">Detail Gambar/Kondisi:</b><div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">${imagesHtml}</div></div>
+                <div class="mt-8 flex gap-2">
+                    <button onclick="editReport(${idx})" class="bg-yellow-600 px-6 py-2 rounded-lg font-bold">Edit</button>
+                    <button onclick="duplicateReport(${idx})" class="bg-blue-600 px-6 py-2 rounded-lg font-bold">Duplicate</button>
+                </div>
+            `;
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal').classList.add('flex');
+        }
+
+        function editReport(idx) {
+            const r = data.reports[idx];
+            document.getElementById('repDate').value = r.date;
+            document.getElementById('repType').value = r.type;
+            document.getElementById('repRoute').value = r.route;
+            document.getElementById('repReg').value = r.reg;
+            document.getElementById('handoverBy').value = r.handover;
+            document.getElementById('receivedBy').value = r.received;
+            
+            // Restore images if available (simplified for edit mode)
+            const imgContainer = document.getElementById('image-reports');
+            imgContainer.innerHTML = '<h3 class="text-lg border-b border-white/10 pb-2">Detail Gambar</h3>';
+            if(r.images) {
+                r.images.forEach(img => {
+                    addImageField(img.pos, img.cond, img.fileData);
+                });
+            }
+            
+            editIdx.report = idx;
+            document.getElementById('submitBtn').innerText = "Update Report";
+            showTab('add', document.querySelectorAll('.nav-item')[1]);
+            closeModal();
+        }
+
+        function duplicateReport(idx) {
+            const duplicated = {...data.reports[idx]};
+            data.reports.push(duplicated);
+            saveToSheet('reports', duplicated); // Simpan duplikat ke GS
+            renderReports();
+            closeModal();
+        }
+
+        function addImageField(pos = '', cond = '', fileData = '') {
+            const div = document.createElement('div');
+            div.className = "image-entry grid grid-cols-1 md:grid-cols-[1fr,1fr,auto,auto] gap-2 p-4 glass rounded-xl items-center mt-2 relative";
+            
+            let imgPreview = fileData ? `<img src="${fileData}" class="h-10 w-10 object-cover rounded border border-white/20">` : '';
+            
+            div.innerHTML = `
+                <input type="text" placeholder="Position" value="${pos}" class="p-2 rounded w-full">
+                <input type="text" placeholder="Condition" value="${cond}" class="p-2 rounded w-full">
+                <div class="flex items-center gap-2 w-full">
+                    ${imgPreview}
+                    <input type="file" accept="image/*" class="p-1 w-full text-sm">
+                    <input type="hidden" class="existing-file" value="${fileData}">
+                </div>
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-400 font-bold px-3 hover:text-red-600">X</button>
+            `;
+            document.getElementById('image-reports').appendChild(div);
+        }
+
+        // --- Logika Database (Cabin, Eng, Air) ---
+        function saveData(type) {
+            const n = document.getElementById(`${type}Name`)?.value || document.getElementById('airName').value;
+            const u = document.getElementById(`${type}Url`)?.value || document.getElementById('airType').value;
+            
+            if(n) {
+                const itemData = {name: n, url: u};
+                
+                if(editIdx[type] >= 0) { 
+                    data[type][editIdx[type]] = itemData; 
+                    editIdx[type] = -1; 
+                } else { 
+                    data[type].push(itemData); 
+                    saveToSheet(type, itemData); // Simpan ke GS
+                }
+                
+                cancelEdit(type); 
+                renderList(type); 
+                updateDropdowns();
+            }
+        }
+
+        function cancelEdit(type) {
+            if(type === 'air') { 
+                document.getElementById('airName').value = ''; 
+                document.getElementById('airType').value = ''; 
+            } else { 
+                document.getElementById(`${type}Name`).value = ''; 
+                document.getElementById(`${type}Url`).value = ''; 
+            }
+            editIdx[type] = -1;
+            renderButtons(type);
+        }
+
+        function renderList(type) {
+            const list = document.getElementById(`${type}List`);
+            list.innerHTML = data[type].map((item, index) => `
+                <div class="glass p-4 rounded-xl cursor-pointer hover:bg-white/20 flex justify-between items-center" onclick="openModal('${type}', ${index})">
+                    <span>${item.name}</span>
+                    <span class="text-xs text-gray-400">Detail ➔</span>
+                </div>
+            `).join('');
+        }
+
+        function renderButtons(type) {
+            const btnContainer = document.getElementById(`${type}FormButtons`);
+            if(editIdx[type] >= 0) {
+                btnContainer.innerHTML = `
+                    <button type="button" onclick="saveData('${type}')" class="w-1/2 bg-green-600 hover:bg-green-500 py-3 rounded-xl transition">Update</button>
+                    <button type="button" onclick="cancelEdit('${type}')" class="w-1/2 bg-gray-600 hover:bg-gray-500 py-3 rounded-xl transition">Cancel</button>
+                `;
+            } else {
+                btnContainer.innerHTML = `<button type="button" onclick="saveData('${type}')" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl transition">Save</button>`;
+            }
+        }
+
+        function openModal(type, index) {
+            const item = data[type][index];
+            document.getElementById('modalTitle').innerText = "Detail Data";
+            document.getElementById('modalContent').innerHTML = `
+                <p class="mb-2"><b class="text-blue-400">Data Name:</b> <br> ${item.name}</p>
+                <p><b class="text-blue-400">Sign URL / Info:</b> <br> <span class="break-words">${item.url}</span></p>
+                <div class="mt-8 flex gap-2">
+                    <button onclick="editEntry('${type}', ${index})" class="bg-yellow-600 px-6 py-2 rounded-lg font-bold">Edit</button>
+                    <button onclick="deleteEntry('${type}', ${index})" class="bg-red-600 px-6 py-2 rounded-lg font-bold">Delete</button>
+                </div>
+            `;
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal').classList.add('flex');
+        }
+
+        function editEntry(type, index) {
+            const item = data[type][index];
+            if(type === 'air') { 
+                document.getElementById('airName').value = item.name; 
+                document.getElementById('airType').value = item.url; 
+            } else { 
+                document.getElementById(`${type}Name`).value = item.name; 
+                document.getElementById(`${type}Url`).value = item.url; 
+            }
+            editIdx[type] = index;
+            renderButtons(type);
+            closeModal();
+        }
+
+        function deleteEntry(type, index) { 
+            data[type].splice(index, 1); 
+            // Note: Delete on GS requires more complex Script implementation. 
+            // This currently deletes it locally.
+            renderList(type); 
+            updateDropdowns(); 
+            closeModal(); 
+        }
+
+        function closeModal() { 
+            document.getElementById('modal').classList.add('hidden'); 
+        }
+    </script>
+</body>
+</html>
