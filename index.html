@@ -3,806 +3,1586 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ecrew-Hand Over Cabin</title>
+    <title>Ecrew - Hand Over Cabin</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Tambahkan library html2pdf untuk fitur cetak PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome untuk Ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
-        .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); }
-        .tab-content { display: none; }
-        .tab-active { display: block; }
-        
-        /* Ubah style nav-active menjadi bentuk tombol (pill) agar lebih ramah sentuhan di HP */
-        .nav-active { background: rgba(96, 165, 250, 0.2); color: #60a5fa; font-weight: 500; }
-        
-        /* CSS untuk menyembunyikan scrollbar tapi tetap bisa di-scroll (Khas iOS) */
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            /* Background gradient yang elegan dan modern */
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: #1e293b;
+        }
 
-        input, select { background: rgba(0,0,0,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.1) !important; }
-        input::placeholder { color: #94a3b8; }
-        table { border-collapse: separate; border-spacing: 0 10px; }
-        .spin { animation: spin 1s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+        /* Efek Glassmorphism Utama */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Efek Glass untuk Input dan Select */
+        .glass-input {
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            transition: all 0.3s ease;
+        }
+        
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 1);
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Efek Navigasi Menu */
+        .nav-btn {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-btn.active {
+            background-color: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            border-color: #3b82f6;
+        }
+
+        .nav-btn:not(.active):hover {
+            background-color: rgba(255, 255, 255, 0.9);
+            transform: translateY(-2px);
+        }
+
+        /* Custom Table Styling */
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        th {
+            background-color: rgba(241, 245, 249, 0.8);
+            color: #334155;
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) td {
+            background-color: rgba(248, 250, 252, 0.5);
+        }
+        
+        td {
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.7);
+        }
     </style>
 </head>
-<body class="p-4 md:p-8" onload="initApp()">
+<body class="p-4 md:p-8">
 
-    <header class="max-w-5xl mx-auto mb-8 flex justify-between items-center">
-        <h1 class="text-2xl font-light tracking-widest">ECREW HANDOVER</h1>
-        <div class="flex items-center gap-4">
-            <span id="statusMsg" class="text-xs text-gray-400"></span>
-            <button id="syncBtn" onclick="syncData()" class="p-2 glass rounded-full hover:bg-white/20 transition">
-                <svg id="syncIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[200] flex flex-col items-center justify-center transition-all opacity-100">
+        <i class="fa-solid fa-circle-notch fa-spin text-5xl text-blue-500 mb-4"></i>
+        <p class="text-white font-medium animate-pulse" id="loading-text">Menghubungkan ke Google Sheets...</p>
+        <p class="text-slate-300 text-xs mt-2 font-mono bg-black/30 px-3 py-1 rounded mt-3 text-center">Pastikan mengisi SCRIPT_URL di dalam kode <br> (Menggunakan data dummy jika kosong)</p>
+    </div>
+
+    <!-- Wrapper Aplikasi -->
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-2 tracking-wide shadow-sm">
+                <i class="fa-solid fa-plane-circle-check mr-3"></i>Ecrew
+            </h1>
+            <h2 class="text-xl md:text-2xl text-blue-100 font-light tracking-widest">HAND OVER CABIN</h2>
+        </header>
+
+        <!-- Menu Navigasi Horizontal -->
+        <nav class="flex flex-wrap justify-center gap-3 mb-8">
+            <button onclick="switchView('handover-data')" id="btn-handover-data" class="nav-btn active glass-panel px-5 py-2.5 rounded-full text-sm font-medium text-slate-700 border">
+                <i class="fa-solid fa-table-list mr-2"></i>Data Handover
             </button>
-        </div>
-    </header>
+            <button onclick="switchView('add-report')" id="btn-add-report" class="nav-btn glass-panel px-5 py-2.5 rounded-full text-sm font-medium text-slate-700 border">
+                <i class="fa-solid fa-file-circle-plus mr-2"></i>Add New Report
+            </button>
+            <button onclick="switchView('db-cabin')" id="btn-db-cabin" class="nav-btn glass-panel px-5 py-2.5 rounded-full text-sm font-medium text-slate-700 border">
+                <i class="fa-solid fa-users mr-2"></i>Database Cabin
+            </button>
+            <button onclick="switchView('db-engineer')" id="btn-db-engineer" class="nav-btn glass-panel px-5 py-2.5 rounded-full text-sm font-medium text-slate-700 border">
+                <i class="fa-solid fa-wrench mr-2"></i>Database Engineer
+            </button>
+            <button onclick="switchView('db-aircraft')" id="btn-db-aircraft" class="nav-btn glass-panel px-5 py-2.5 rounded-full text-sm font-medium text-slate-700 border">
+                <i class="fa-solid fa-plane mr-2"></i>Database Aircraft
+            </button>
+            
+            <!-- Tombol Sync -->
+            <button onclick="forceSync()" class="nav-btn bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-full text-sm font-medium border-none shadow-md transition-all ml-2">
+                <i class="fa-solid fa-rotate mr-2" id="sync-icon"></i>Sync Data
+            </button>
+        </nav>
 
-    <nav class="max-w-5xl mx-auto glass rounded-2xl mb-8">
-        <!-- Ubah ul menjadi flex nowrap dengan overflow auto agar bisa di-swipe di HP -->
-        <ul class="flex overflow-x-auto hide-scrollbar gap-2 text-sm p-2 whitespace-nowrap md:justify-center">
-            <li class="cursor-pointer hover:bg-white/10 nav-item nav-active px-4 py-2 rounded-xl transition flex-shrink-0" onclick="showTab('list', this)">Data Handover</li>
-            <li class="cursor-pointer hover:bg-white/10 nav-item px-4 py-2 rounded-xl transition flex-shrink-0" onclick="showTab('add', this)">Add New Report</li>
-            <li class="cursor-pointer hover:bg-white/10 nav-item px-4 py-2 rounded-xl transition flex-shrink-0" onclick="showTab('cabin', this)">DB Cabin</li>
-            <li class="cursor-pointer hover:bg-white/10 nav-item px-4 py-2 rounded-xl transition flex-shrink-0" onclick="showTab('engineer', this)">DB Engineer</li>
-            <li class="cursor-pointer hover:bg-white/10 nav-item px-4 py-2 rounded-xl transition flex-shrink-0" onclick="showTab('aircraft', this)">DB Aircraft</li>
-        </ul>
-    </nav>
+        <!-- Main Content Area -->
+        <main class="glass-panel rounded-2xl p-6 md:p-8 min-h-[500px]">
+            
+            <!-- SECTION: Data Handover -->
+            <section id="view-handover-data" class="view-section block">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-semibold text-slate-800"><i class="fa-solid fa-folder-open text-blue-500 mr-2"></i>Handover Data List</h3>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-3">No</th>
+                                <th class="px-4 py-3">Date & Time</th>
+                                <th class="px-4 py-3">Type Form</th>
+                                <th class="px-4 py-3">Route</th>
+                                <th class="px-4 py-3">A/C Reg</th>
+                                <th class="px-4 py-3">Handover By</th>
+                                <th class="px-4 py-3">Received By</th>
+                                <th class="px-4 py-3">Images</th>
+                                <th class="px-4 py-3 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body-handover">
+                            <!-- Data populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
-    <main class="max-w-5xl mx-auto glass rounded-3xl p-8">
-        <!-- Tab Data Handover -->
-        <div id="list" class="tab-content tab-active">
-            <h2 class="text-xl font-medium mb-6">Daftar Laporan Terkini</h2>
-            <div id="handoverList" class="overflow-x-auto">
-                <table class="w-full text-left">
-                    <thead><tr class="text-gray-400 border-b border-white/10"><th>Date</th><th>Route</th><th>Reg</th><th>Handover By</th><th>Received By</th></tr></thead>
-                    <tbody id="handoverTableBody"></tbody>
-                </table>
+            <!-- SECTION: Add New Report -->
+            <section id="view-add-report" class="view-section hidden">
+                <h3 class="text-2xl font-semibold text-slate-800 mb-6"><i class="fa-solid fa-pen-to-square text-blue-500 mr-2"></i>Create New Handover Report</h3>
+                <form id="form-add-report" onsubmit="submitReport(event)" class="space-y-8">
+                    
+                    <!-- Data Utama Report -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="flex flex-col">
+                            <label class="text-sm font-medium text-slate-600 mb-1">Date and Time</label>
+                            <input type="datetime-local" id="report-datetime" required class="glass-input w-full px-4 py-2.5 rounded-lg text-sm">
+                        </div>
+                        
+                        <div class="flex flex-col">
+                            <label class="text-sm font-medium text-slate-600 mb-1">Type Form</label>
+                            <select id="report-type" required class="glass-input w-full px-4 py-2.5 rounded-lg text-sm">
+                                <option value="" disabled selected>Select Type</option>
+                                <option value="Flight Out">Flight Out</option>
+                                <option value="Flight Return">Flight Return</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex flex-col">
+                            <label class="text-sm font-medium text-slate-600 mb-1">Route</label>
+                            <input type="text" id="report-route" placeholder="e.g. CGK - DPS" required class="glass-input w-full px-4 py-2.5 rounded-lg text-sm">
+                        </div>
+                        
+                        <div class="flex flex-col">
+                            <label class="text-sm font-medium text-slate-600 mb-1">Aircraft Registration</label>
+                            <select id="report-aircraft" required class="glass-input w-full px-4 py-2.5 rounded-lg text-sm">
+                                <option value="" disabled selected>Select Aircraft</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex flex-col">
+                            <label class="text-sm font-medium text-slate-600 mb-1">Handover By (Cabin/Eng)</label>
+                            <select id="report-handover-by" required class="glass-input w-full px-4 py-2.5 rounded-lg text-sm">
+                                <option value="" disabled selected>Select Personnel</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex flex-col">
+                            <label class="text-sm font-medium text-slate-600 mb-1">Received By (Cabin/Eng)</label>
+                            <select id="report-received-by" required class="glass-input w-full px-4 py-2.5 rounded-lg text-sm">
+                                <option value="" disabled selected>Select Personnel</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr class="border-t border-slate-300 border-dashed">
+
+                    <!-- Data Image Report Dinamis -->
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-semibold text-slate-800"><i class="fa-regular fa-images text-blue-500 mr-2"></i>Image Reports</h4>
+                            <button type="button" onclick="addImageRow()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium py-2 px-4 rounded-lg text-sm transition-colors border border-indigo-200 shadow-sm">
+                                <i class="fa-solid fa-plus mr-1"></i> Tambah Input Gambar
+                            </button>
+                        </div>
+                        
+                        <!-- Container untuk baris input gambar -->
+                        <div id="image-reports-container" class="space-y-4">
+                            <!-- Input gambar akan di-generate di sini -->
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end pt-4 border-t border-slate-200">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-10 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">
+                            <i class="fa-solid fa-save mr-2"></i>Submit Handover Report
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- SECTION: Database Cabin -->
+            <section id="view-db-cabin" class="view-section hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Form Area -->
+                    <div class="lg:col-span-1 bg-white bg-opacity-40 p-5 rounded-xl border border-white border-opacity-60 h-fit shadow-inner">
+                        <h4 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-plus-circle text-blue-500 mr-2"></i>Add Cabin Crew</h4>
+                        <form id="form-cabin" onsubmit="submitCabin(event)" class="space-y-4">
+                            <div>
+                                <label class="text-xs font-medium text-slate-600 mb-1 block">Name</label>
+                                <input type="text" id="cabin-name" required class="glass-input w-full px-3 py-2 rounded-lg text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-slate-600 mb-1 block">Rank</label>
+                                <select id="cabin-rank" required class="glass-input w-full px-3 py-2 rounded-lg text-sm">
+                                    <option value="Cs.">Cs. (Cabin Service)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-slate-600 mb-1 block">Sign URL (Image Link)</label>
+                                <input type="url" id="cabin-sign" placeholder="https://..." required class="glass-input w-full px-3 py-2 rounded-lg text-sm">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm transition-colors mt-2">
+                                Add to DB
+                            </button>
+                        </form>
+                    </div>
+                    <!-- Table Area -->
+                    <div class="lg:col-span-2">
+                        <h4 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-list text-blue-500 mr-2"></i>Cabin Personnel List</h4>
+                        <div class="overflow-x-auto rounded-xl border border-slate-200">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead>
+                                    <tr>
+                                        <th class="px-4 py-3">No</th>
+                                        <th class="px-4 py-3">Name</th>
+                                        <th class="px-4 py-3">Rank</th>
+                                        <th class="px-4 py-3">Sign Data</th>
+                                        <th class="px-4 py-3 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-cabin"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: Database Engineer -->
+            <section id="view-db-engineer" class="view-section hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Form Area -->
+                    <div class="lg:col-span-1 bg-white bg-opacity-40 p-5 rounded-xl border border-white border-opacity-60 h-fit shadow-inner">
+                        <h4 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-plus-circle text-blue-500 mr-2"></i>Add Engineer</h4>
+                        <form id="form-engineer" onsubmit="submitEngineer(event)" class="space-y-4">
+                            <div>
+                                <label class="text-xs font-medium text-slate-600 mb-1 block">Name</label>
+                                <input type="text" id="eng-name" required class="glass-input w-full px-3 py-2 rounded-lg text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-slate-600 mb-1 block">Rank</label>
+                                <select id="eng-rank" required class="glass-input w-full px-3 py-2 rounded-lg text-sm">
+                                    <option value="Eng.">Eng. (Engineer)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-slate-600 mb-1 block">Sign URL (Image Link)</label>
+                                <input type="url" id="eng-sign" placeholder="https://..." required class="glass-input w-full px-3 py-2 rounded-lg text-sm">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm transition-colors mt-2">
+                                Add to DB
+                            </button>
+                        </form>
+                    </div>
+                    <!-- Table Area -->
+                    <div class="lg:col-span-2">
+                        <h4 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-list text-blue-500 mr-2"></i>Engineer Personnel List</h4>
+                        <div class="overflow-x-auto rounded-xl border border-slate-200">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead>
+                                    <tr>
+                                        <th class="px-4 py-3">No</th>
+                                        <th class="px-4 py-3">Name</th>
+                                        <th class="px-4 py-3">Rank</th>
+                                        <th class="px-4 py-3">Sign Data</th>
+                                        <th class="px-4 py-3 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-engineer"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: Database Aircraft -->
+            <section id="view-db-aircraft" class="view-section hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Form Area -->
+                    <div class="lg:col-span-1 bg-white bg-opacity-40 p-5 rounded-xl border border-white border-opacity-60 h-fit shadow-inner">
+                        <h4 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-plus-circle text-blue-500 mr-2"></i>Add Aircraft</h4>
+                        <form id="form-aircraft" onsubmit="submitAircraft(event)" class="space-y-4">
+                            <div>
+                                <label class="text-xs font-medium text-slate-600 mb-1 block">Name / Registration</label>
+                                <input type="text" id="aircraft-name" placeholder="e.g. PK-GIA" required class="glass-input w-full px-3 py-2 rounded-lg text-sm uppercase">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg text-sm transition-colors mt-2">
+                                Add to DB
+                            </button>
+                        </form>
+                    </div>
+                    <!-- Table Area -->
+                    <div class="lg:col-span-2">
+                        <h4 class="text-lg font-semibold text-slate-800 mb-4"><i class="fa-solid fa-list text-blue-500 mr-2"></i>Aircraft List</h4>
+                        <div class="overflow-x-auto rounded-xl border border-slate-200">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead>
+                                    <tr>
+                                        <th class="px-4 py-3 w-16">No</th>
+                                        <th class="px-4 py-3">Name Aircraft (Reg)</th>
+                                        <th class="px-4 py-3 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-aircraft"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+        
+        <footer class="text-center mt-8 text-blue-100 text-sm font-light">
+            &copy; 2026 Ecrew - Hand Over System. Designed with <i class="fa-solid fa-heart text-red-400 mx-1"></i> in Indonesia.
+        </footer>
+    </div>
+
+    <!-- Modal Detail Personnel -->
+    <div id="modal-detail" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center transition-opacity opacity-100 p-4">
+        <div class="bg-white/95 backdrop-blur-xl w-full max-w-sm p-6 rounded-2xl shadow-2xl relative transform transition-all border border-white/50">
+            <button onclick="closeModals()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 id="detail-title" class="text-xl font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Detail Personnel</h3>
+            
+            <div class="space-y-4 mb-6">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Name</p>
+                    <p id="detail-name" class="text-lg font-medium text-slate-800">-</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Rank</p>
+                    <span id="detail-rank" class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-md font-semibold mt-1 inline-block">-</span>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Signature Preview</p>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex justify-center items-center min-h-[100px]">
+                        <img id="detail-img" src="" alt="Signature" onerror="this.onerror=null; this.src='https://placehold.co/150x50/fee2e2/ef4444?text=Error+Load'" class="max-h-24 max-w-full object-contain drop-shadow-sm">
+                    </div>
+                </div>
             </div>
-        </div>
-
-        <!-- Tab Add New Report -->
-        <div id="add" class="tab-content">
-            <h2 id="formTitle" class="text-xl font-medium mb-6">Tambah Laporan Baru</h2>
-            <form id="reportForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="datetime-local" id="repDate" class="w-full p-3 rounded-xl">
-                <select id="repType" class="w-full p-3 rounded-xl">
-                    <option value="Flight Out">Flight Out</option>
-                    <option value="Flight Return">Flight Return</option>
-                </select>
-                <input type="text" id="repRoute" placeholder="Route" class="w-full p-3 rounded-xl">
-                <select id="repReg" class="w-full p-3 rounded-xl"><option value="">Pilih Registrasi Pesawat</option></select>
-                <select id="handoverBy" class="w-full p-3 rounded-xl"><option value="">Handover By</option></select>
-                <select id="receivedBy" class="w-full p-3 rounded-xl"><option value="">Received By</option></select>
-                
-                <div id="image-reports" class="md:col-span-2 space-y-4 mt-4">
-                    <h3 class="text-lg border-b border-white/10 pb-2">Detail Gambar</h3>
-                </div>
-                
-                <button type="button" onclick="addImageField()" class="md:col-span-2 bg-gray-600 hover:bg-gray-500 py-2 rounded-xl transition">+ Tambah Input Gambar</button>
-                <button type="button" id="submitBtn" onclick="submitReport()" class="md:col-span-2 bg-blue-600 hover:bg-blue-500 py-3 rounded-xl transition">Submit Report</button>
-            </form>
-        </div>
-
-        <!-- Tab DB Cabin -->
-        <div id="cabin" class="tab-content">
-            <h2 class="text-xl font-medium mb-6">Database Cabin Crew</h2>
-            <form id="cabinForm" class="space-y-4 mb-8">
-                <input type="text" id="cabinName" placeholder="Name" class="w-full p-3 rounded-xl">
-                <input type="text" id="cabinUrl" placeholder="Sign URL" class="w-full p-3 rounded-xl">
-                <div id="cabinFormButtons" class="flex gap-2">
-                    <button type="button" onclick="saveData('cabin')" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl transition">Save</button>
-                </div>
-            </form>
-            <div id="cabinList" class="space-y-2"></div>
-        </div>
-
-        <!-- Tab DB Engineer -->
-        <div id="engineer" class="tab-content">
-            <h2 class="text-xl font-medium mb-6">Database Engineer</h2>
-            <form id="engForm" class="space-y-4 mb-8">
-                <input type="text" id="engName" placeholder="Name" class="w-full p-3 rounded-xl">
-                <input type="text" id="engUrl" placeholder="Sign URL" class="w-full p-3 rounded-xl">
-                <div id="engFormButtons" class="flex gap-2">
-                    <button type="button" onclick="saveData('eng')" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl transition">Save</button>
-                </div>
-            </form>
-            <div id="engList" class="space-y-2"></div>
-        </div>
-
-        <!-- Tab DB Aircraft -->
-        <div id="aircraft" class="tab-content">
-            <h2 class="text-xl font-medium mb-6">Database Aircraft</h2>
-            <form id="airForm" class="space-y-4 mb-8">
-                <input type="text" id="airName" placeholder="Registration (e.g. PK-GIA)" class="w-full p-3 rounded-xl">
-                <input type="text" id="airType" placeholder="Aircraft Type" class="w-full p-3 rounded-xl">
-                <div id="airFormButtons" class="flex gap-2">
-                    <button type="button" onclick="saveData('air')" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl transition">Save</button>
-                </div>
-            </form>
-            <div id="airList" class="space-y-2"></div>
-        </div>
-    </main>
-
-    <!-- Modal Pop-Up Global -->
-    <div id="modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center backdrop-blur-sm p-4 z-50">
-        <div class="glass p-8 rounded-3xl w-full max-w-2xl relative max-h-[90vh] overflow-y-auto">
-            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-300 hover:text-white font-bold text-xl">✕</button>
-            <h2 class="text-2xl font-bold mb-6 border-b border-white/20 pb-4" id="modalTitle">Detail Data</h2>
-            <div id="modalContent"></div>
+            
+            <div class="flex gap-3">
+                <button onclick="openEditForm()" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-pen-to-square mr-2"></i> Edit
+                </button>
+                <button onclick="triggerDelete()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-trash mr-2"></i> Delete
+                </button>
+            </div>
         </div>
     </div>
 
+    <!-- Modal Edit Personnel -->
+    <div id="modal-edit" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center transition-opacity opacity-100 p-4">
+        <div class="bg-white/95 backdrop-blur-xl w-full max-w-sm p-6 rounded-2xl shadow-2xl relative transform transition-all border border-white/50">
+            <button onclick="closeModals()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 id="edit-title" class="text-xl font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Edit Data</h3>
+            
+            <form id="form-edit-personnel" onsubmit="submitEdit(event)" class="space-y-4">
+                <div>
+                    <label class="text-xs font-semibold text-slate-700 mb-1 block">Name</label>
+                    <input type="text" id="edit-name" required class="glass-input w-full px-3 py-2.5 rounded-lg text-sm bg-white/50 border-slate-300 focus:bg-white">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-700 mb-1 block">Rank</label>
+                    <select id="edit-rank" required class="glass-input w-full px-3 py-2.5 rounded-lg text-sm bg-white/50 border-slate-300 focus:bg-white">
+                        <!-- Options injected by JS -->
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-700 mb-1 block">Sign URL (Image Link)</label>
+                    <input type="url" id="edit-sign" required class="glass-input w-full px-3 py-2.5 rounded-lg text-sm bg-white/50 border-slate-300 focus:bg-white">
+                </div>
+                <div class="pt-3 flex gap-3">
+                    <button type="button" onclick="closeModals()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg font-medium transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm">
+                        <i class="fa-solid fa-save mr-1"></i> Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Detail Aircraft -->
+    <div id="modal-detail-aircraft" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center transition-opacity opacity-100 p-4">
+        <div class="bg-white/95 backdrop-blur-xl w-full max-w-sm p-6 rounded-2xl shadow-2xl relative transform transition-all border border-white/50">
+            <button onclick="closeModals()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-xl font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Detail Aircraft</h3>
+            
+            <div class="space-y-4 mb-6">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Registration Name</p>
+                    <p id="detail-aircraft-name" class="text-2xl font-bold text-slate-800 font-mono mt-1 tracking-wide">-</p>
+                </div>
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="openEditAircraft()" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-pen-to-square mr-2"></i> Edit
+                </button>
+                <button onclick="triggerDeleteAircraft()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-trash mr-2"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Edit Aircraft -->
+    <div id="modal-edit-aircraft" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center transition-opacity opacity-100 p-4">
+        <div class="bg-white/95 backdrop-blur-xl w-full max-w-sm p-6 rounded-2xl shadow-2xl relative transform transition-all border border-white/50">
+            <button onclick="closeModals()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-xl font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Edit Aircraft</h3>
+            
+            <form id="form-edit-aircraft" onsubmit="submitEditAircraft(event)" class="space-y-4">
+                <div>
+                    <label class="text-xs font-semibold text-slate-700 mb-1 block">Name / Registration</label>
+                    <input type="text" id="edit-aircraft-name" required class="glass-input w-full px-3 py-2.5 rounded-lg text-sm bg-white/50 border-slate-300 focus:bg-white uppercase">
+                </div>
+                <div class="pt-3 flex gap-3">
+                    <button type="button" onclick="closeModals()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg font-medium transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm">
+                        <i class="fa-solid fa-save mr-1"></i> Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Detail Handover Report -->
+    <div id="modal-detail-handover" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center transition-opacity opacity-100 p-4 overflow-y-auto">
+        <div class="bg-white/95 backdrop-blur-xl w-full max-w-2xl p-6 rounded-2xl shadow-2xl relative transform transition-all border border-white/50 my-auto">
+            <button onclick="closeModals()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-xl font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">
+                <i class="fa-solid fa-file-invoice text-blue-500 mr-2"></i> Handover Detail
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Date & Time</p>
+                    <p id="detail-ho-datetime" class="text-sm font-medium text-slate-800 mt-1">-</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Type Form</p>
+                    <p id="detail-ho-type" class="text-sm font-medium mt-1">-</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Route</p>
+                    <p id="detail-ho-route" class="text-sm font-medium text-slate-800 mt-1">-</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Aircraft Reg</p>
+                    <p id="detail-ho-aircraft" class="text-sm font-bold font-mono text-slate-700 mt-1">-</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Handover By</p>
+                    <p id="detail-ho-handover" class="text-sm font-medium text-slate-800 mt-1">-</p>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Received By</p>
+                    <p id="detail-ho-received" class="text-sm font-medium text-slate-800 mt-1">-</p>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <p class="text-sm font-semibold text-slate-700 mb-3 border-b border-slate-200 pb-1">Images Data</p>
+                <div id="detail-ho-images-list" class="space-y-2 max-h-48 overflow-y-auto pr-2">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap md:flex-nowrap gap-3 pt-3 border-t border-slate-200">
+                <button onclick="openEditHandover()" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-pen-to-square mr-2"></i> Edit
+                </button>
+                <button onclick="triggerDuplicateHandover()" class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-copy mr-2"></i> Duplicate
+                </button>
+                <button onclick="triggerDeleteHandover()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-trash mr-2"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Edit Handover Report -->
+    <div id="modal-edit-handover" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center transition-opacity opacity-100 p-4 overflow-y-auto">
+        <div class="bg-white/95 backdrop-blur-xl w-full max-w-3xl p-6 rounded-2xl shadow-2xl relative transform transition-all border border-white/50 my-auto max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModals()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-xl font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">
+                <i class="fa-solid fa-pen text-blue-500 mr-2"></i> Edit Handover Report
+            </h3>
+            
+            <form id="form-edit-handover" onsubmit="submitEditHandover(event)" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-700 mb-1">Date and Time</label>
+                        <input type="datetime-local" id="edit-report-datetime" required class="glass-input w-full px-3 py-2 rounded-lg text-sm bg-white/50">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-700 mb-1">Type Form</label>
+                        <select id="edit-report-type" required class="glass-input w-full px-3 py-2 rounded-lg text-sm bg-white/50">
+                            <option value="Flight Out">Flight Out</option>
+                            <option value="Flight Return">Flight Return</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-700 mb-1">Route</label>
+                        <input type="text" id="edit-report-route" required class="glass-input w-full px-3 py-2 rounded-lg text-sm bg-white/50 uppercase">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-700 mb-1">Aircraft Registration</label>
+                        <select id="edit-report-aircraft" required class="glass-input w-full px-3 py-2 rounded-lg text-sm bg-white/50">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-700 mb-1">Handover By (Cabin/Eng)</label>
+                        <select id="edit-report-handover-by" required class="glass-input w-full px-3 py-2 rounded-lg text-sm bg-white/50">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-700 mb-1">Received By (Cabin/Eng)</label>
+                        <select id="edit-report-received-by" required class="glass-input w-full px-3 py-2 rounded-lg text-sm bg-white/50">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-200 pt-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-sm font-semibold text-slate-700">Images Data</h4>
+                        <button type="button" onclick="addEditImageRow()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium py-1.5 px-3 rounded-md text-xs transition-colors border border-indigo-200">
+                            + Add Image
+                        </button>
+                    </div>
+                    <div id="edit-image-reports-container" class="space-y-3">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <div class="pt-3 flex gap-3 border-t border-slate-200">
+                    <button type="button" onclick="closeModals()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg font-medium transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm">
+                        <i class="fa-solid fa-save mr-1"></i> Update Report
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification / Message Box -->
+    <div id="toast" class="fixed bottom-6 right-6 transform transition-all duration-300 translate-y-10 opacity-0 pointer-events-none glass-panel px-6 py-3 rounded-lg flex items-center shadow-2xl z-50 border-l-4 border-l-green-500">
+        <i class="fa-solid fa-check-circle text-green-500 text-xl mr-3"></i>
+        <span id="toast-message" class="text-slate-800 font-medium text-sm">Message saved!</span>
+    </div>
+
+    <!-- Javascript Application Logic -->
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyCaDSaK8kmnr4c6YaVF8-Zqgi-9DWnqNAYuYDAKZ_Ou2enDdxA-_rOh3i0g0O7OcvV/exec";
-        
-        // State lokal aplikasi
-        let data = { cabin: [], eng: [], air: [], reports: [] };
-        let editIdx = { cabin: -1, eng: -1, air: -1, report: -1 };
-        let syncTimer = null;
-        let isSaving = false; // PENANDA: Mencegah auto-sync menarik data saat sedang proses simpan
+        // --- KONFIGURASI GOOGLE SHEETS ---
+        // MASUKKAN URL DEPLOYMENT APLIKASI WEB ANDA DI SINI
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx62xu3AVtqeaJFIaeQ2qsEa5EITIcsef1zX870oMP5WMo4e3_DA2DJN3WV1oLZK3Hl/exec'; 
 
-        // Inisialisasi Aplikasi & Auto-Sync
-        function initApp() {
-            syncData(); // Sync pertama kali saat halaman dimuat
-            
-            // Interval Auto-Sync setiap 15 detik
-            syncTimer = setInterval(() => {
-                // Jangan lakukan auto-sync jika pengguna SEDANG mengisi laporan atau mengedit sesuatu
-                if (!isEditing()) {
-                    syncData(true);
-                }
-            }, 15000);
-        }
+        // --- DATA STATE / IN-MEMORY DATABASE ---
+        let dbCabin = [];
+        let dbEngineer = [];
+        let dbAircraft = [];
+        let dbHandover = [];
 
-        // Cek aktivitas pengguna agar inputan/pilihan tidak tertimpa sinkronisasi otomatis
-        function isEditing() {
-            const sedangEditForm = Object.values(editIdx).some(val => val !== -1);
-            const modalTerbuka = !document.getElementById('modal').classList.contains('hidden');
-            const lagiDiTabAdd = document.getElementById('add').classList.contains('tab-active'); // Jika di menu tambah laporan
-            
-            return sedangEditForm || modalTerbuka || isSaving || lagiDiTabAdd; 
-        }
-
-        // Tab Navigasi
-        function showTab(id, el) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('tab-active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('nav-active'));
-            document.getElementById(id).classList.add('tab-active');
-            el.classList.add('nav-active');
-        }
-
-        // --- Fitur Google Sheet Sync ---
-        async function syncData(isBackground = false) {
-            const icon = document.getElementById('syncIcon');
-            const status = document.getElementById('statusMsg');
-            
-            icon.classList.add('spin');
-            if (!isBackground) status.innerText = "Syncing...";
-            
+        // Fungsi Singkronisasi ke Server (Google Sheets)
+        async function syncData(action, table, data) {
+            if (!SCRIPT_URL || SCRIPT_URL === '') {
+                console.warn("SCRIPT_URL kosong. Hanya menyimpan di memori lokal.");
+                return;
+            }
             try {
-                const response = await fetch(WEB_APP_URL + "?action=getData");
-                if (!response.ok) throw new Error('HTTP error ' + response.status);
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Menghindari pemblokiran CORS
+                    body: JSON.stringify({ action, table, data })
+                });
                 
+                // Menangkap pesan error spesifik dari Backend Google Script
                 const result = await response.json();
-                
-                if(result.cabin) data.cabin = result.cabin;
-                if(result.eng) data.eng = result.eng;
-                if(result.air) data.air = result.air;
-                if(result.reports) data.reports = result.reports;
-
-                renderAll();
-                updateDropdowns();
-                
-                if (!isBackground) {
-                    status.innerText = "Terhubung";
-                    status.classList.remove('text-red-400');
-                    status.classList.add('text-gray-400');
+                if (result.status === 'error') {
+                    throw new Error(result.message);
                 }
             } catch (err) {
-                // Menggunakan console.warn agar tidak memicu error log merah di sistem
-                console.warn("Sinkronisasi gagal (mungkin offline atau URL tidak valid):", err.message);
-                
-                if (!isBackground) {
-                    status.innerText = "Mode Offline (Cek Akses GAS)";
-                    status.classList.remove('text-gray-400');
-                    status.classList.add('text-red-400');
-                    
-                    if(err.message.includes("Failed to fetch") || err.message.includes("NetworkError") || err.message.includes("404")) {
-                        showGasWarning();
-                    }
-                }
-                renderAll();
-                updateDropdowns();
-            } finally {
-                icon.classList.remove('spin');
-                if (!isBackground) {
-                    setTimeout(() => { if(status.innerText === "Terhubung") status.innerText = ""; }, 3000);
-                }
+                console.error("Gagal sinkronisasi:", err);
+                showNotification("Server Error: " + err.message);
+                throw err; // Hentikan eksekusi jika gagal
             }
         }
 
-        async function saveToSheet(sheetName, itemData) {
-            isSaving = true; 
-            const icon = document.getElementById('syncIcon');
-            icon.classList.add('spin'); 
+        // Fungsi Mengambil Data Awal dari Sheets
+        async function fetchInitialData(isManualSync = false) {
+            if (!SCRIPT_URL || SCRIPT_URL === '') {
+                dbCabin = [{ id: "1", name: "Siti Rahma", rank: "Cs.", signUrl: "https://placehold.co/150x50/e2e8f0/475569?text=Sign+Siti" }];
+                dbEngineer = [{ id: "1", name: "Budi Santoso", rank: "Eng.", signUrl: "https://placehold.co/150x50/e2e8f0/475569?text=Sign+Budi" }];
+                dbAircraft = [{ id: "1", name: "PK-GIA" }];
+                dbHandover = [{
+                    id: "1", dateTime: "2026-07-02T08:30", typeForm: "Flight Out", route: "CGK - DPS", aircraftReg: "PK-GIA",
+                    handoverBy: "Siti Rahma (Cs.)", receivedBy: "Budi Santoso (Eng.)", images: [{ posisi: "Forward Galley", kondisi: "Good", imageFile: "sample.jpg" }]
+                }];
+                renderAllTables();
+                if(!isManualSync) document.getElementById('loading-overlay').classList.add('hidden');
+                return;
+            }
+
+            if(!isManualSync) {
+                document.getElementById('loading-overlay').classList.remove('hidden');
+            }
+
             try {
-                await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: 'save', sheet: sheetName, data: itemData })
-                });
+                const res = await fetch(SCRIPT_URL);
+                const data = await res.json();
+
+                dbCabin = data.Cabin || [];
+                dbEngineer = data.Engineer || [];
+                dbAircraft = data.Aircraft || [];
                 
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                await syncData(true);
-            } catch (err) {
-                console.error("Gagal simpan ke sheet:", err);
-            } finally {
-                icon.classList.remove('spin');
-                isSaving = false;
-            }
-        }
-
-        async function syncUpdateAll(sheetName) {
-            isSaving = true; 
-            const icon = document.getElementById('syncIcon');
-            icon.classList.add('spin'); 
-            try {
-                await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: 'updateAll', sheet: sheetName, data: data[sheetName] })
-                });
-                
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                await syncData(true);
-            } catch (err) {
-                console.warn("Gagal update semua data ke sheet:", err);
-            } finally {
-                icon.classList.remove('spin');
-                isSaving = false;
-            }
-        }
-
-        function showGasWarning() {
-            document.getElementById('modalTitle').innerText = "Koneksi Google Sheet Gagal";
-            document.getElementById('modalContent').innerHTML = `
-                <div class="bg-red-500/20 p-4 rounded-xl border border-red-500/50 text-sm">
-                    <p class="font-bold text-red-400 mb-2">Error Akses Data (Misal: 404 atau CORS Blocked).</p>
-                    <p class="mb-2">Ini biasanya terjadi karena Link Google Apps Script (WEB_APP_URL) belum diubah ke link Anda sendiri, atau script telah dihapus/diperbarui. Untuk memperbaikinya:</p>
-                    <ol class="list-decimal ml-5 space-y-1">
-                        <li>Buka Google Script Anda, klik <b>Deploy</b> > <b>New Deployment</b>.</li>
-                        <li>Pilih tipe <b>Web App</b>.</li>
-                        <li><b>Execute as:</b> Me (Email Anda).</li>
-                        <li><b>Who has access:</b> <span class="text-yellow-300 font-bold bg-black/30 px-1 rounded">Anyone</span>.</li>
-                        <li>Klik Deploy, lalu salin URL Web App yang baru.</li>
-                        <li>Ganti link pada variabel <code class="bg-black/50 px-1 rounded text-yellow-200">WEB_APP_URL</code> di dalam kode HTML ini dengan link milik Anda.</li>
-                    </ol>
-                </div>
-                <div class="mt-6 flex gap-2">
-                    <button onclick="closeModal()" class="bg-gray-600 px-6 py-2 rounded-lg font-bold">Mengerti</button>
-                </div>
-            `;
-            document.getElementById('modal').classList.remove('hidden');
-            document.getElementById('modal').classList.add('flex');
-        }
-
-        // --- Render UI ---
-        function renderAll() {
-            renderReports();
-            renderList('cabin');
-            renderList('eng');
-            renderList('air');
-        }
-
-        function formatTanggal(dateStr) {
-            if (!dateStr) return "-";
-            const d = new Date(dateStr);
-            const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} / ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-        }
-
-        function updateDropdowns() {
-            const hSel = document.getElementById('handoverBy');
-            const rSel = document.getElementById('receivedBy');
-            const aSel = document.getElementById('repReg');
-            
-            // Simpan nilai lama sebelum dirender ulang agar tidak hilang
-            const currentH = hSel.value;
-            const currentR = rSel.value;
-            const currentA = aSel.value;
-            
-            [hSel, rSel].forEach(sel => {
-                sel.innerHTML = '<option value="">Pilih Nama...</option>';
-                data.cabin.forEach(c => sel.innerHTML += `<option value="${c.name} (Cs.)">${c.name} (Cs.)</option>`);
-                data.eng.forEach(e => sel.innerHTML += `<option value="${e.name} (Eng.)">${e.name} (Eng.)</option>`);
-            });
-            
-            aSel.innerHTML = '<option value="">Pilih Pesawat...</option>';
-            data.air.forEach(a => aSel.innerHTML += `<option value="${a.name}">${a.name}</option>`);
-            
-            // Pasang kembali nilai lama
-            if(currentH) hSel.value = currentH;
-            if(currentR) rSel.value = currentR;
-            if(currentA) aSel.value = currentA;
-        }
-
-        // --- Logika Fitur Laporan (Reports) ---
-        const getBase64 = (file) => new Promise((resolve, reject) => {
-            if (!file) return resolve('');
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    
-                    // KOMPRESI EKSTRA KETAT: Resolusi diturunkan jadi 400px (Aman untuk Google Sheet)
-                    const MAX_WIDTH = 400; 
-                    const MAX_HEIGHT = 400;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height && width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
-                    } else if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
+                // Error Handling jika di Spreadsheet ada cell 'images' yang rusak atau kosong
+                dbHandover = (data.Handover || []).map(h => {
+                    let parsedImages = [];
+                    if (h.images) {
+                        try {
+                            parsedImages = typeof h.images === 'string' ? JSON.parse(h.images) : h.images;
+                        } catch (e) {
+                            console.warn("Gagal parse array image pada id:", h.id);
+                            parsedImages = []; // Fallback agar tidak membuat tabel blank
+                        }
                     }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    
-                    // Kualitas JPEG diturunkan menjadi 0.4 (40%) agar ukuran string Base64 pendek
-                    resolve(canvas.toDataURL('image/jpeg', 0.4)); 
-                };
-                img.onerror = (error) => reject(error);
-            };
-            reader.onerror = (error) => reject(error);
-        });
+                    return {
+                        ...h,
+                        id: h.id.toString(), // Pastikan id berupa string
+                        images: parsedImages
+                    };
+                });
 
-        async function submitReport() {
-            const btn = document.getElementById('submitBtn');
-            btn.innerText = "Processing...";
-            btn.disabled = true;
-
-            const imageEntries = Array.from(document.querySelectorAll('.image-entry'));
-            const images = [];
-
-            for (let div of imageEntries) {
-                const pos = div.querySelector('input[type="text"]').value;
-                const cond = div.querySelectorAll('input[type="text"]')[1].value;
-                const fileInput = div.querySelector('input[type="file"]');
-                const existingFile = div.querySelector('.existing-file')?.value || '';
-                
-                let fileData = existingFile; 
-                if (fileInput && fileInput.files.length > 0) {
-                    fileData = await getBase64(fileInput.files[0]);
-                }
-                
-                images.push({ pos, cond, fileData });
-            }
-
-            const r = {
-                date: document.getElementById('repDate').value,
-                type: document.getElementById('repType').value,
-                route: document.getElementById('repRoute').value,
-                reg: document.getElementById('repReg').value,
-                handover: document.getElementById('handoverBy').value,
-                received: document.getElementById('receivedBy').value,
-                images: images
-            };
-
-            if(editIdx.report >= 0) { 
-                data.reports[editIdx.report] = r; 
-                editIdx.report = -1; 
-                syncUpdateAll('reports');
-            } else { 
-                data.reports.push(r); 
-                saveToSheet('reports', r);
-            }
-            
-            document.getElementById('reportForm').reset();
-            const imgContainer = document.getElementById('image-reports');
-            imgContainer.innerHTML = '<h3 class="text-lg border-b border-white/10 pb-2">Detail Gambar</h3>';
-            
-            btn.innerText = "Submit Report";
-            btn.disabled = false;
-            
-            renderReports();
-            showTab('list', document.querySelectorAll('.nav-item')[0]);
-        }
-
-        function renderReports() {
-            document.getElementById('handoverTableBody').innerHTML = data.reports.map((r, i) => `
-                <tr class="glass cursor-pointer hover:bg-white/20" onclick="openReportModal(${i})">
-                    <td class="p-4">${formatTanggal(r.date)}</td>
-                    <td class="p-4">${r.route || '-'}</td>
-                    <td class="p-4">${r.reg || '-'}</td>
-                    <td class="p-4">${r.handover || '-'}</td>
-                    <td class="p-4">${r.received || '-'}</td>
-                </tr>
-            `).join('');
-        }
-
-        function openReportModal(idx) {
-            const r = data.reports[idx];
-            document.getElementById('modalTitle').innerText = "Detail Laporan";
-            let imagesHtml = (r.images && r.images.length > 0) 
-                ? r.images.map(img => `
-                    <div class="bg-white/5 p-3 rounded-lg text-sm mb-2 border border-white/10">
-                        <p><b>Posisi:</b> ${img.pos}</p>
-                        <p><b>Kondisi:</b> ${img.cond}</p>
-                        ${img.fileData ? `<img src="${img.fileData}" class="mt-2 rounded max-h-40 object-contain w-full bg-black/20">` : ''}
-                    </div>
-                  `).join('') 
-                : 'Tidak ada data gambar';
-            
-            document.getElementById('modalContent').innerHTML = `
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                    <p><b class="text-blue-400">Date:</b><br>${formatTanggal(r.date)}</p>
-                    <p><b class="text-blue-400">Route:</b><br>${r.route || '-'}</p>
-                    <p><b class="text-blue-400">Aircraft:</b><br>${r.reg || '-'}</p>
-                    <p><b class="text-blue-400">Type:</b><br>${r.type || '-'}</p>
-                    <p><b class="text-blue-400">Handover:</b><br>${r.handover || '-'}</p>
-                    <p><b class="text-blue-400">Received:</b><br>${r.received || '-'}</p>
-                </div>
-                <div class="mt-6"><b class="text-blue-400">Detail Gambar/Kondisi:</b><div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">${imagesHtml}</div></div>
-                <div class="mt-8 flex flex-wrap gap-2">
-                    <button onclick="editReport(${idx})" class="bg-yellow-600 px-6 py-2 rounded-lg font-bold">Edit</button>
-                    <button onclick="duplicateReport(${idx})" class="bg-blue-600 px-6 py-2 rounded-lg font-bold">Duplicate</button>
-                    <!-- Tambahkan tombol cetak PDF -->
-                    <button id="btn-print-${idx}" onclick="downloadPDF(${idx})" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-lg font-bold transition">Cetak PDF</button>
-                </div>
-            `;
-            document.getElementById('modal').classList.remove('hidden');
-            document.getElementById('modal').classList.add('flex');
-        }
-
-        // Fungsi baru untuk menghasilkan dokumen PDF A4 yang rapi dan profesional
-        async function downloadPDF(idx) {
-            const r = data.reports[idx];
-            const btn = document.getElementById(`btn-print-${idx}`);
-            const originalText = btn.innerText;
-            btn.innerText = "Memproses PDF...";
-            btn.disabled = true;
-
-            // Fungsi bantu untuk mengambil URL tanda tangan khusus PDF
-            function getSignatureImgUrlForPdf(fullName) {
-                if (!fullName || fullName === '-') return '';
-                // Hapus embel-embel (Cs.) atau (Eng.) untuk pencarian di database
-                let name = fullName.replace(' (Cs.)', '').replace(' (Eng.)', '');
-                let db = fullName.includes('(Cs.)') ? data.cabin : (fullName.includes('(Eng.)') ? data.eng : []);
-                
-                const person = db.find(p => p.name === name);
-                if (person && person.url) {
-                    const driveRegex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|docs\.google\.com\/.*?id=)([a-zA-Z0-9_-]+)/;
-                    const match = person.url.match(driveRegex);
-                    if (match && match[1]) {
-                        // KUNCI KECEPATAN: Gunakan Thumbnail API (w400) agar sangat ringan dan cepat diload oleh proxy
-                        return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w400`;
-                    }
-                    return person.url;
-                }
-                return '';
-            }
-
-            // Fungsi bantu untuk mem-bypass CORS secara efisien
-            async function fetchImageAsBase64(url) {
-                if (!url) return '';
-                try {
-                    // Gunakan allorigins karena paling stabil dan cepat untuk Thumbnail Google Drive
-                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-                    
-                    const res = await fetch(proxyUrl);
-                    if (!res.ok) throw new Error("Gagal mengambil gambar dari proxy");
-                    
-                    const blob = await res.blob();
-                    return await new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result);
-                        reader.readAsDataURL(blob);
-                    });
-                } catch (err) {
-                    console.warn("Gambar tanda tangan gagal dimuat untuk PDF:", err);
-                    return ''; // Jika gagal, kembalikan kosong agar PDF tetap bisa dicetak
+                renderAllTables();
+                if(!isManualSync) document.getElementById('loading-overlay').classList.add('hidden');
+            } catch (err) {
+                console.error("Gagal mengambil data:", err);
+                if(!isManualSync) {
+                    document.getElementById('loading-text').innerText = "Gagal memuat data!";
+                    setTimeout(() => document.getElementById('loading-overlay').classList.add('hidden'), 2000);
+                } else {
+                    showNotification("Error: Gagal menyinkronkan data!");
                 }
             }
+        }
 
-            const handoverSignUrl = getSignatureImgUrlForPdf(r.handover);
-            const receivedSignUrl = getSignatureImgUrlForPdf(r.received);
-
-            // KUNCI KECEPATAN: Proses fetch gambar secara BERSAMAAN (Paralel) menggunakan Promise.all
-            // Ini akan memangkas waktu loading hingga 50% lebih cepat
-            const [handoverB64, receivedB64] = await Promise.all([
-                fetchImageAsBase64(handoverSignUrl),
-                fetchImageAsBase64(receivedSignUrl)
-            ]);
-
-            const handoverSignHtml = handoverB64 
-                ? `<img src="${handoverB64}" style="max-height: 80px; max-width: 150px; display: block; margin: 0 auto 10px auto; object-fit: contain;" />` 
-                : `<div style="height: 80px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #999;">(Tanda tangan tidak tersedia)</div>`;
-            
-            const receivedSignHtml = receivedB64 
-                ? `<img src="${receivedB64}" style="max-height: 80px; max-width: 150px; display: block; margin: 0 auto 10px auto; object-fit: contain;" />` 
-                : `<div style="height: 80px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #999;">(Tanda tangan tidak tersedia)</div>`;
-
-            // Template khusus cetak PDF (Background putih, teks hitam, format tabel)
-            let pdfImagesHtml = '';
-            if (r.images && r.images.length > 0) {
-                pdfImagesHtml = r.images.map(img => `
-                    <div style="page-break-inside: avoid; border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px; background: #fafafa;">
-                        <p style="margin: 0 0 5px 0;"><strong>Posisi / Fasilitas:</strong> ${img.pos}</p>
-                        <p style="margin: 0 0 10px 0;"><strong>Kondisi Ditemukan:</strong> ${img.cond}</p>
-                        ${img.fileData ? `<img src="${img.fileData}" style="max-height: 250px; border-radius: 4px; display: block; margin-top: 10px; border: 1px solid #eee;" />` : ''}
-                    </div>
-                `).join('');
-            } else {
-                pdfImagesHtml = '<p style="font-style: italic; color: #666;">Tidak ada catatan gambar atau kerusakan terlampir.</p>';
+        // Fungsi Tombol Sync Manual
+        async function forceSync() {
+            if (!SCRIPT_URL || SCRIPT_URL === '') {
+                showNotification("SCRIPT_URL belum diatur!");
+                return;
             }
+            const syncIcon = document.getElementById('sync-icon');
+            syncIcon.classList.add('fa-spin');
+            showNotification("Menyinkronkan data dari server...");
+            
+            await fetchInitialData(true);
+            
+            syncIcon.classList.remove('fa-spin');
+            showNotification("Data berhasil diperbarui!");
+        }
 
-            const printContainer = document.createElement('div');
-            printContainer.innerHTML = `
-                <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; background: #fff; width: 100%;">
-                    <h1 style="text-align: center; color: #1e293b; border-bottom: 3px solid #1e293b; padding-bottom: 15px; margin-bottom: 30px; font-size: 24px; letter-spacing: 2px;">
-                        ECREW HANDOVER CABIN REPORT
-                    </h1>
-                    
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
-                        <tr>
-                            <td style="padding: 12px; border: 1px solid #ddd; background: #f8fafc; width: 35%;"><strong>Tanggal & Waktu</strong></td>
-                            <td style="padding: 12px; border: 1px solid #ddd;">${formatTanggal(r.date)}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 12px; border: 1px solid #ddd; background: #f8fafc;"><strong>Jenis Pengecekan</strong></td>
-                            <td style="padding: 12px; border: 1px solid #ddd;">${r.type || '-'}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 12px; border: 1px solid #ddd; background: #f8fafc;"><strong>Rute Penerbangan</strong></td>
-                            <td style="padding: 12px; border: 1px solid #ddd;">${r.route || '-'}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 12px; border: 1px solid #ddd; background: #f8fafc;"><strong>Registrasi Pesawat</strong></td>
-                            <td style="padding: 12px; border: 1px solid #ddd;">${r.reg || '-'}</td>
-                        </tr>
-                    </table>
+        function renderAllTables() {
+            renderCabinTable();
+            renderEngineerTable();
+            renderAircraftTable();
+            renderHandoverTable();
+            updateFormSelects();
+        }
 
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; text-align: center; font-size: 14px;">
-                        <tr>
-                            <td style="padding: 12px; border: 1px solid #ddd; background: #f8fafc; width: 50%;"><strong>Handover By (Diserahkan Oleh)</strong></td>
-                            <td style="padding: 12px; border: 1px solid #ddd; background: #f8fafc; width: 50%;"><strong>Received By (Diterima Oleh)</strong></td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 12px; border: 1px solid #ddd; height: 120px; vertical-align: bottom;">
-                                ${handoverSignHtml}
-                                <strong>${r.handover || '-'}</strong>
-                            </td>
-                            <td style="padding: 12px; border: 1px solid #ddd; height: 120px; vertical-align: bottom;">
-                                ${receivedSignHtml}
-                                <strong>${r.received || '-'}</strong>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <h2 style="font-size: 18px; color: #1e293b; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
-                        Detail Kondisi Kabin & Dokumentasi
-                    </h2>
-                    <div>
-                        ${pdfImagesHtml}
-                    </div>
-                </div>
-            `;
-
-            // Opsi untuk PDF A4
-            const opt = {
-                margin:       0.75, // Mengatur margin 0.75 inci untuk semua sisi (berlaku di setiap halaman)
-                filename:     `Handover_Report_${r.reg || 'Pesawat'}_${r.date.split('T')[0] || 'Date'}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
-
-            // Proses rendering dari elemen rahasia ke PDF
-            html2pdf().set(opt).from(printContainer).save().then(() => {
-                btn.innerText = originalText;
-                btn.disabled = false;
-            }).catch(err => {
-                console.error("Gagal mencetak PDF:", err);
-                alert("Gagal mencetak dokumen.");
-                btn.innerText = originalText;
-                btn.disabled = false;
+        // Format Date Helper
+        function formatDateTime(datetimeStr) {
+            if(!datetimeStr) return '-';
+            const date = new Date(datetimeStr);
+            return date.toLocaleString('id-ID', {
+                year: 'numeric', month: 'short', day: 'numeric', 
+                hour: '2-digit', minute: '2-digit'
             });
         }
 
-        function editReport(idx) {
-            const r = data.reports[idx];
-            document.getElementById('repDate').value = r.date;
-            document.getElementById('repType').value = r.type;
-            document.getElementById('repRoute').value = r.route;
-            document.getElementById('repReg').value = r.reg;
-            document.getElementById('handoverBy').value = r.handover;
-            document.getElementById('receivedBy').value = r.received;
-            
-            const imgContainer = document.getElementById('image-reports');
-            imgContainer.innerHTML = '<h3 class="text-lg border-b border-white/10 pb-2">Detail Gambar</h3>';
-            if(r.images) {
-                r.images.forEach(img => {
-                    addImageField(img.pos, img.cond, img.fileData);
-                });
-            }
-            
-            editIdx.report = idx;
-            document.getElementById('submitBtn').innerText = "Update Report";
-            showTab('add', document.querySelectorAll('.nav-item')[1]);
-            closeModal();
-        }
-
-        function duplicateReport(idx) {
-            const duplicated = {...data.reports[idx]};
-            data.reports.push(duplicated);
-            saveToSheet('reports', duplicated);
-            renderReports();
-            closeModal();
-        }
-
-        function addImageField(pos = '', cond = '', fileData = '') {
-            const div = document.createElement('div');
-            div.className = "image-entry grid grid-cols-1 md:grid-cols-[1fr,1fr,auto,auto] gap-2 p-4 glass rounded-xl items-center mt-2 relative";
-            
-            let imgPreview = fileData ? `<img src="${fileData}" class="h-10 w-10 object-cover rounded border border-white/20">` : '';
-            
-            div.innerHTML = `
-                <input type="text" placeholder="Position" value="${pos}" class="p-2 rounded w-full">
-                <input type="text" placeholder="Condition" value="${cond}" class="p-2 rounded w-full">
-                <div class="flex items-center gap-2 w-full">
-                    ${imgPreview}
-                    <input type="file" accept="image/*" class="p-1 w-full text-sm">
-                    <input type="hidden" class="existing-file" value="${fileData}">
-                </div>
-                <button type="button" onclick="this.parentElement.remove()" class="text-red-400 font-bold px-3 hover:text-red-600">X</button>
-            `;
-            document.getElementById('image-reports').appendChild(div);
-        }
-
-        // --- Logika Database (Cabin, Eng, Air) ---
-        function saveData(type) {
-            const n = document.getElementById(`${type}Name`)?.value || document.getElementById('airName').value;
-            const u = document.getElementById(`${type}Url`)?.value || document.getElementById('airType').value;
-            
-            if(n) {
-                const itemData = {name: n, url: u};
-                
-                if(editIdx[type] >= 0) { 
-                    data[type][editIdx[type]] = itemData; 
-                    editIdx[type] = -1; 
-                    syncUpdateAll(type);
-                } else { 
-                    data[type].push(itemData); 
-                    saveToSheet(type, itemData);
-                }
-                
-                cancelEdit(type); 
-                renderList(type); 
-                updateDropdowns();
-            }
-        }
-
-        function cancelEdit(type) {
-            if(type === 'air') { 
-                document.getElementById('airName').value = ''; 
-                document.getElementById('airType').value = ''; 
-            } else { 
-                document.getElementById(`${type}Name`).value = ''; 
-                document.getElementById(`${type}Url`).value = ''; 
-            }
-            editIdx[type] = -1;
-            renderButtons(type);
-        }
-
-        function renderList(type) {
-            const list = document.getElementById(`${type}List`);
-            list.innerHTML = data[type].map((item, index) => `
-                <div class="glass p-4 rounded-xl cursor-pointer hover:bg-white/20 flex justify-between items-center" onclick="openModal('${type}', ${index})">
-                    <span>${item.name}</span>
-                    <span class="text-xs text-gray-400">Detail ➔</span>
-                </div>
-            `).join('');
-        }
-
-        function renderButtons(type) {
-            const btnContainer = document.getElementById(`${type}FormButtons`);
-            if(editIdx[type] >= 0) {
-                btnContainer.innerHTML = `
-                    <button type="button" onclick="saveData('${type}')" class="w-1/2 bg-green-600 hover:bg-green-500 py-3 rounded-xl transition">Update</button>
-                    <button type="button" onclick="cancelEdit('${type}')" class="w-1/2 bg-gray-600 hover:bg-gray-500 py-3 rounded-xl transition">Cancel</button>
-                `;
-            } else {
-                btnContainer.innerHTML = `<button type="button" onclick="saveData('${type}')" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl transition">Save</button>`;
-            }
-        }
-
-        // Fungsi untuk mengonversi URL Google Drive menjadi Direct Image Link
-        function getDriveDirectLink(url) {
-            if (!url) return '';
-            // Mencari ID file dari tautan Google Drive
-            const driveRegex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|docs\.google\.com\/.*?id=)([a-zA-Z0-9_-]+)/;
-            const match = url.match(driveRegex);
+        // Helper untuk mengubah Google Drive link menjadi Direct Image link
+        function convertDriveUrlToImage(url) {
+            const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
             if (match && match[1]) {
-                // MENGGUNAKAN THUMBNAIL API: Lebih stabil dan tidak terblokir oleh aturan keamanan cookie browser baru
-                return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
+                return `https://lh3.googleusercontent.com/d/${match[1]}`;
             }
-            return url; 
+            return url;
         }
 
-        function openModal(type, index) {
-            const item = data[type][index];
-            document.getElementById('modalTitle').innerText = "Detail Data";
+        // --- NAVIGATION LOGIC ---
+        function switchView(viewName) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            document.getElementById(`btn-${viewName}`).classList.add('active');
+        }
 
-            let imgPreview = '';
-            // Hanya tampilkan preview gambar untuk Cabin dan Engineer
-            if (type === 'cabin' || type === 'eng') {
-                const directUrl = getDriveDirectLink(item.url);
-                if (directUrl && (directUrl.startsWith('http'))) {
-                    imgPreview = `
-                        <div class="mt-4">
-                            <b class="text-blue-400">Preview Tanda Tangan:</b><br>
-                            <div class="mt-2 p-2 bg-white rounded border border-gray-300">
-                                <img src="${directUrl}" 
-                                     class="max-h-48 w-full object-contain" 
-                                     alt="Tanda Tangan" 
-                                     onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22150%22%20height%3D%22150%22%20viewBox%3D%220%200%20150%20150%22%3E%3Crect%20fill%3D%22%23ddd%22%20width%3D%22150%22%20height%3D%22150%22%2F%3E%3Ctext%20fill%3D%22%23555%22%20font-family%3D%22sans-serif%22%20font-size%3D%2212%22%20dy%3D%2210.5%22%20font-weight%3D%22bold%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%3EGambar%20Tidak%20Ditemukan%3C%2Ftext%3E%3C%2Fsvg%3E';">
+        // --- MODAL DETAIL, EDIT & DELETE LOGIC ---
+        let activeModalType = ''; 
+        let activeModalId = null;
+
+        function showPersonnelDetail(type, id) {
+            activeModalType = type;
+            activeModalId = id;
+            const db = type === 'cabin' ? dbCabin : dbEngineer;
+            const person = db.find(p => p.id === id.toString());
+
+            if(!person) return;
+
+            document.getElementById('detail-title').innerText = type === 'cabin' ? 'Detail Cabin Crew' : 'Detail Engineer';
+            document.getElementById('detail-name').innerText = person.name;
+            
+            const rankBadge = document.getElementById('detail-rank');
+            rankBadge.innerText = person.rank;
+            rankBadge.className = type === 'cabin' 
+                ? 'bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-md font-semibold mt-1 inline-block'
+                : 'bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-md font-semibold mt-1 inline-block';
+            
+            document.getElementById('detail-img').src = person.signUrl;
+            document.getElementById('modal-detail').classList.remove('hidden');
+        }
+
+        function closeModals() {
+            const modalIds = [
+                'modal-detail', 'modal-edit', 
+                'modal-detail-aircraft', 'modal-edit-aircraft', 
+                'modal-detail-handover', 'modal-edit-handover'
+            ];
+            
+            modalIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+        }
+
+        // --- HANDOVER MODAL LOGIC ---
+        function showHandoverDetail(id) {
+            activeModalType = 'handover';
+            activeModalId = id.toString();
+            const report = dbHandover.find(h => h.id === activeModalId);
+            
+            if(!report) return;
+
+            document.getElementById('detail-ho-datetime').innerText = formatDateTime(report.dateTime);
+            
+            const typeBadge = document.getElementById('detail-ho-type');
+            typeBadge.innerText = report.typeForm;
+            typeBadge.className = report.typeForm === 'Flight Out' 
+                ? 'text-sm font-medium mt-1 text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-md inline-block' 
+                : 'text-sm font-medium mt-1 text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md inline-block';
+
+            document.getElementById('detail-ho-route').innerText = report.route;
+            document.getElementById('detail-ho-aircraft').innerText = report.aircraftReg;
+            document.getElementById('detail-ho-handover').innerText = report.handoverBy;
+            document.getElementById('detail-ho-received').innerText = report.receivedBy;
+
+            const imagesContainer = document.getElementById('detail-ho-images-list');
+            imagesContainer.innerHTML = '';
+            
+            if(!report.images || report.images.length === 0) {
+                imagesContainer.innerHTML = '<p class="text-sm text-slate-500 italic">No images attached.</p>';
+            } else {
+                report.images.forEach((img, idx) => {
+                    let imageElement = '';
+                    if(img.fileUrl) {
+                        imageElement = `<img src="${img.fileUrl}" alt="Attachment" class="mt-3 rounded-lg border border-slate-200 max-h-40 w-auto object-cover cursor-pointer hover:opacity-90 transition-opacity shadow-sm" onclick="window.open('${img.fileUrl}', '_blank')">`;
+                    }
+                    
+                    imagesContainer.innerHTML += `
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-between mb-3 shadow-sm">
+                            <div class="flex justify-between items-start w-full">
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-800">Pos: <span class="font-normal">${img.posisi}</span></p>
+                                    <p class="text-xs font-semibold text-slate-800">Cond: <span class="font-normal">${img.kondisi}</span></p>
+                                </div>
+                                <span class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded truncate max-w-[120px]" title="${img.imageFile}"><i class="fa-solid fa-file-image mr-1"></i> ${img.imageFile}</span>
                             </div>
-                            <p class="text-xs text-yellow-300 mt-2 italic">
-                                *Jika gambar tidak muncul, pastikan link Google Drive sudah di-set ke <b>"Anyone with the link" (Siapa saja yang memiliki link)</b>.
-                            </p>
-                        </div>`;
-                }
+                            ${imageElement}
+                        </div>
+                    `;
+                });
             }
 
-            document.getElementById('modalContent').innerHTML = `
-                <p class="mb-2"><b class="text-blue-400">Data Name:</b> <br> ${item.name}</p>
-                <p><b class="text-blue-400">Sign URL / Info:</b> <br> <span class="break-words text-sm text-gray-300">${item.url}</span></p>
-                ${imgPreview}
-                <div class="mt-8 flex gap-2">
-                    <button onclick="editEntry('${type}', ${index})" class="bg-yellow-600 px-6 py-2 rounded-lg font-bold">Edit</button>
-                    <button onclick="deleteEntry('${type}', ${index})" class="bg-red-600 px-6 py-2 rounded-lg font-bold">Delete</button>
+            document.getElementById('modal-detail-handover').classList.remove('hidden');
+        }
+
+        async function triggerDuplicateHandover() {
+            const report = dbHandover.find(h => h.id === activeModalId);
+            if(!report) return;
+
+            const duplicatedReport = JSON.parse(JSON.stringify(report));
+            duplicatedReport.id = Date.now().toString(); // Pastikan string
+            
+            dbHandover.push(duplicatedReport);
+            renderHandoverTable();
+            closeModals();
+            showNotification('Menduplikasi ke server...');
+            
+            await syncData('ADD', 'Handover', duplicatedReport);
+            showNotification('Report duplicated successfully!');
+        }
+
+        async function triggerDeleteHandover() {
+            if(!confirm('Apakah Anda yakin ingin menghapus Report ini?')) return;
+            
+            const idToDelete = activeModalId;
+            dbHandover = dbHandover.filter(h => h.id !== idToDelete);
+            renderHandoverTable();
+            closeModals();
+            showNotification('Menghapus dari server...');
+            
+            await syncData('DELETE', 'Handover', { id: idToDelete });
+            showNotification('Handover Report deleted!');
+        }
+
+        function openEditHandover() {
+            document.getElementById('modal-detail-handover').classList.add('hidden');
+            const report = dbHandover.find(h => h.id === activeModalId);
+            
+            document.getElementById('edit-report-datetime').value = report.dateTime;
+            document.getElementById('edit-report-type').value = report.typeForm;
+            document.getElementById('edit-report-route').value = report.route;
+            document.getElementById('edit-report-aircraft').value = report.aircraftReg;
+            document.getElementById('edit-report-handover-by').value = report.handoverBy;
+            document.getElementById('edit-report-received-by').value = report.receivedBy;
+
+            const editImagesContainer = document.getElementById('edit-image-reports-container');
+            editImagesContainer.innerHTML = '';
+            
+            if(report.images && report.images.length > 0) {
+                report.images.forEach(img => addEditImageRow(img.posisi, img.kondisi, img.imageFile, img.fileUrl));
+            } else {
+                addEditImageRow(); 
+            }
+
+            document.getElementById('modal-edit-handover').classList.remove('hidden');
+        }
+
+        async function submitEditHandover(e) {
+            e.preventDefault();
+            
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('loading-text').innerText = "Updating report & uploading new images...";
+
+            try {
+                const index = dbHandover.findIndex(h => h.id === activeModalId);
+                
+                if(index !== -1) {
+                    const imageRows = document.querySelectorAll('.edit-image-input-row');
+                    const imagesData = [];
+                    
+                    for(let row of imageRows) {
+                        const position = row.querySelector('[name="edit-img-position"]').value;
+                        const condition = row.querySelector('[name="edit-img-condition"]').value;
+                        const fileInput = row.querySelector('[name="edit-img-file"]');
+                        const existingFile = row.querySelector('[name="existing-file-name"]').value;
+                        const existingUrl = row.querySelector('[name="existing-file-url"]')?.value || "";
+                        
+                        let fileName = existingFile;
+                        let fileData = "";
+                        let fileUrl = existingUrl;
+                        
+                        // Jika user mengunggah file baru di proses Edit
+                        if (fileInput && fileInput.files.length > 0) {
+                            fileName = fileInput.files[0].name;
+                            fileData = await toBase64(fileInput.files[0]);
+                            fileUrl = ""; // Reset URL karena akan diisi baru oleh backend
+                        }
+                        
+                        imagesData.push({ posisi: position, kondisi: condition, imageFile: fileName, fileData: fileData, fileUrl: fileUrl });
+                    }
+
+                    const updatedReport = {
+                        id: activeModalId,
+                        dateTime: document.getElementById('edit-report-datetime').value,
+                        typeForm: document.getElementById('edit-report-type').value,
+                        route: document.getElementById('edit-report-route').value.toUpperCase(),
+                        aircraftReg: document.getElementById('edit-report-aircraft').value,
+                        handoverBy: document.getElementById('edit-report-handover-by').value,
+                        receivedBy: document.getElementById('edit-report-received-by').value,
+                        images: imagesData
+                    };
+
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'EDIT', table: 'Handover', data: updatedReport })
+                    });
+                    
+                    await fetchInitialData(true); // Tarik ulang data dari server
+                    closeModals();
+                    showNotification('Report updated successfully!');
+                }
+            } catch (err) {
+                console.error("Gagal update report:", err);
+                showNotification('Error updating report!');
+            } finally {
+                document.getElementById('loading-overlay').classList.add('hidden');
+                document.getElementById('loading-text').innerText = "Menghubungkan ke Google Sheets...";
+            }
+        }
+
+
+        // --- AIRCRAFT MODAL LOGIC ---
+        function showAircraftDetail(id) {
+            activeModalType = 'aircraft';
+            activeModalId = id.toString();
+            const aircraft = dbAircraft.find(a => a.id === activeModalId);
+            
+            if(!aircraft) return;
+            document.getElementById('detail-aircraft-name').innerText = aircraft.name;
+            document.getElementById('modal-detail-aircraft').classList.remove('hidden');
+        }
+
+        async function triggerDeleteAircraft() {
+            if(!confirm('Apakah Anda yakin ingin menghapus data Aircraft ini?')) return;
+            
+            const idToDelete = activeModalId;
+            dbAircraft = dbAircraft.filter(a => a.id !== idToDelete);
+            renderAircraftTable();
+            updateFormSelects();
+            closeModals();
+            showNotification('Menghapus dari server...');
+            
+            await syncData('DELETE', 'Aircraft', { id: idToDelete });
+            showNotification('Aircraft berhasil dihapus!');
+        }
+
+        function openEditAircraft() {
+            document.getElementById('modal-detail-aircraft').classList.add('hidden');
+            const aircraft = dbAircraft.find(a => a.id === activeModalId);
+            document.getElementById('edit-aircraft-name').value = aircraft.name;
+            document.getElementById('modal-edit-aircraft').classList.remove('hidden');
+        }
+
+        async function submitEditAircraft(e) {
+            e.preventDefault();
+            const index = dbAircraft.findIndex(a => a.id === activeModalId);
+            
+            if(index !== -1) {
+                dbAircraft[index].name = document.getElementById('edit-aircraft-name').value.toUpperCase();
+                const updatedAc = dbAircraft[index];
+                
+                renderAircraftTable();
+                updateFormSelects(); 
+                closeModals();
+                showNotification('Update server...');
+                
+                await syncData('EDIT', 'Aircraft', updatedAc);
+                showNotification('Aircraft berhasil diupdate!');
+            }
+        }
+
+        async function triggerDelete() {
+            if(!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
+            
+            const idToDelete = activeModalId;
+            const type = activeModalType;
+            const tableName = type === 'cabin' ? 'Cabin' : 'Engineer';
+            
+            if(type === 'cabin') {
+                dbCabin = dbCabin.filter(p => p.id !== idToDelete);
+                renderCabinTable();
+            } else {
+                dbEngineer = dbEngineer.filter(p => p.id !== idToDelete);
+                renderEngineerTable();
+            }
+            
+            updateFormSelects();
+            closeModals();
+            showNotification('Menghapus dari server...');
+            
+            await syncData('DELETE', tableName, { id: idToDelete });
+            showNotification('Data berhasil dihapus!');
+        }
+
+        function openEditForm() {
+            document.getElementById('modal-detail').classList.add('hidden');
+            const db = activeModalType === 'cabin' ? dbCabin : dbEngineer;
+            const person = db.find(p => p.id === activeModalId);
+            
+            document.getElementById('edit-title').innerText = activeModalType === 'cabin' ? 'Edit Cabin Crew' : 'Edit Engineer';
+            document.getElementById('edit-name').value = person.name;
+            
+            const rankSelect = document.getElementById('edit-rank');
+            rankSelect.innerHTML = activeModalType === 'cabin' 
+                ? '<option value="Cs.">Cs. (Cabin Service)</option>'
+                : '<option value="Eng.">Eng. (Engineer)</option>';
+            rankSelect.value = person.rank;
+            
+            document.getElementById('edit-sign').value = person.signUrl;
+            document.getElementById('modal-edit').classList.remove('hidden');
+        }
+
+        async function submitEdit(e) {
+            e.preventDefault();
+            const type = activeModalType;
+            const db = type === 'cabin' ? dbCabin : dbEngineer;
+            const tableName = type === 'cabin' ? 'Cabin' : 'Engineer';
+            const index = db.findIndex(p => p.id === activeModalId);
+            
+            if(index !== -1) {
+                let rawUrl = document.getElementById('edit-sign').value;
+                let processedUrl = convertDriveUrlToImage(rawUrl);
+
+                db[index].name = document.getElementById('edit-name').value;
+                db[index].rank = document.getElementById('edit-rank').value;
+                db[index].signUrl = processedUrl;
+                
+                const updatedPerson = db[index];
+
+                if(type === 'cabin') renderCabinTable();
+                else renderEngineerTable();
+                
+                updateFormSelects(); 
+                closeModals();
+                showNotification('Update server...');
+                
+                await syncData('EDIT', tableName, updatedPerson);
+                showNotification('Data berhasil diupdate!');
+            }
+        }
+
+        // --- DYNAMIC IMAGE ROWS LOGIC ---
+        function addImageRow() {
+            const container = document.getElementById('image-reports-container');
+            const row = document.createElement('div');
+            row.className = 'image-input-row relative bg-white bg-opacity-50 p-4 rounded-xl border border-slate-200 shadow-sm transition-all animate-fade-in-down';
+            row.innerHTML = `
+                <button type="button" onclick="this.parentElement.remove()" class="absolute top-3 right-3 text-red-400 hover:text-red-600 transition-colors bg-red-50 hover:bg-red-100 rounded-full w-7 h-7 flex items-center justify-center z-20" title="Hapus Gambar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                    <div class="flex flex-col space-y-3 col-span-1 md:col-span-2">
+                        <div class="flex flex-col">
+                            <label class="text-xs font-semibold text-slate-700 mb-1">Position Image <span class="text-red-500">*</span></label>
+                            <input type="text" name="img-position" placeholder="e.g. Galley" required class="glass-input w-full px-3 py-2 rounded-lg text-sm">
+                        </div>
+                        <div class="flex flex-col">
+                            <label class="text-xs font-semibold text-slate-700 mb-1">Condition <span class="text-red-500">*</span></label>
+                            <input type="text" name="img-condition" placeholder="e.g. Good" required class="glass-input w-full px-3 py-2 rounded-lg text-sm">
+                        </div>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-700 mb-1">Photo Preview <span class="text-red-500">*</span></label>
+                        <div class="relative w-full h-32 bg-slate-100/80 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group hover:border-blue-400 transition-colors">
+                            <input type="file" name="img-file" onchange="previewAndCompressImage(this)" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/*">
+                            <div class="placeholder-text pointer-events-none flex flex-col items-center text-slate-400 group-hover:text-blue-500 transition-colors">
+                                <i class="fa-solid fa-camera text-3xl mb-2"></i>
+                                <span class="text-[10px] font-semibold uppercase tracking-wider">Tap to Upload</span>
+                            </div>
+                            <img class="preview-img absolute inset-0 w-full h-full object-cover hidden" src="" />
+                            <input type="hidden" class="compressed-data" name="img-base64">
+                            <input type="hidden" class="file-name" name="img-filename">
+                        </div>
+                    </div>
                 </div>
             `;
-            document.getElementById('modal').classList.remove('hidden');
-            document.getElementById('modal').classList.add('flex');
+            container.prepend(row);
         }
 
-        function editEntry(type, index) {
-            const item = data[type][index];
-            if(type === 'air') { 
-                document.getElementById('airName').value = item.name; 
-                document.getElementById('airType').value = item.url; 
-            } else { 
-                document.getElementById(`${type}Name`).value = item.name; 
-                document.getElementById(`${type}Url`).value = item.url; 
+        function addEditImageRow(position = '', condition = '', fileName = 'No File Selected', fileUrl = '') {
+            const container = document.getElementById('edit-image-reports-container');
+            const row = document.createElement('div');
+            row.className = 'edit-image-input-row relative bg-slate-50 p-3 rounded-lg border border-slate-200 transition-all';
+            
+            let placeholderHidden = fileUrl ? 'hidden' : '';
+            let imgHidden = fileUrl ? '' : 'hidden';
+            let requiredAttr = fileUrl ? '' : 'required';
+
+            row.innerHTML = `
+                <button type="button" onclick="this.parentElement.remove()" class="absolute top-2 right-2 text-red-400 hover:text-red-600 transition-colors bg-red-50 hover:bg-red-100 rounded-full w-6 h-6 flex items-center justify-center z-20" title="Hapus">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pr-6">
+                    <div class="flex flex-col space-y-2 col-span-1 md:col-span-2">
+                        <div class="flex flex-col">
+                            <label class="text-[10px] font-semibold text-slate-500 uppercase">Position</label>
+                            <input type="text" name="edit-img-position" value="${position}" required class="glass-input w-full px-2 py-1.5 rounded text-xs bg-white mt-1">
+                        </div>
+                        <div class="flex flex-col">
+                            <label class="text-[10px] font-semibold text-slate-500 uppercase">Condition</label>
+                            <input type="text" name="edit-img-condition" value="${condition}" required class="glass-input w-full px-2 py-1.5 rounded text-xs bg-white mt-1">
+                        </div>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[10px] font-semibold text-slate-500 uppercase mb-1">Photo</label>
+                        <div class="relative w-full h-20 bg-slate-200/50 rounded border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group hover:border-blue-400 transition-colors">
+                            <input type="file" name="edit-img-file" onchange="previewAndCompressImage(this)" ${requiredAttr} class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/*">
+                            <div class="placeholder-text pointer-events-none flex flex-col items-center text-slate-400 ${placeholderHidden}">
+                                <i class="fa-solid fa-camera text-xl mb-1"></i>
+                                <span class="text-[9px] font-bold uppercase">Change</span>
+                            </div>
+                            <img class="preview-img absolute inset-0 w-full h-full object-cover ${imgHidden}" src="${fileUrl}" />
+                            <input type="hidden" class="compressed-data" name="edit-img-base64" value="">
+                            <input type="hidden" class="file-name" name="existing-file-name" value="${fileName}">
+                            <input type="hidden" class="file-url" name="existing-file-url" value="${fileUrl}">
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(row);
+        }
+
+        // Fungsi Kompresi dan Preview Gambar
+        function previewAndCompressImage(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+                const container = input.parentElement;
+                
+                const imgPreview = container.querySelector('.preview-img');
+                const dataInput = container.querySelector('.compressed-data');
+                const nameInput = container.querySelector('.file-name');
+                const placeholder = container.querySelector('.placeholder-text');
+
+                nameInput.value = file.name; // Simpan nama file asli di balik layar
+
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Maksimal dimensi gambar (800px) agar size ringan saat dikirim ke Server
+                        const MAX_DIM = 800; 
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > MAX_DIM) {
+                                height *= MAX_DIM / width;
+                                width = MAX_DIM;
+                            }
+                        } else {
+                            if (height > MAX_DIM) {
+                                width *= MAX_DIM / height;
+                                height = MAX_DIM;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Kompresi ke format JPEG (kualitas 0.7) mengurangi size hingga 90%
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                        
+                        // Tampilkan preview ke kotak box
+                        imgPreview.src = dataUrl;
+                        imgPreview.classList.remove('hidden');
+                        if(placeholder) placeholder.classList.add('hidden');
+                        
+                        // Simpan text kompresi ke element rahasia
+                        dataInput.value = dataUrl; 
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
             }
-            editIdx[type] = index;
-            renderButtons(type);
-            closeModal();
         }
 
-        function deleteEntry(type, index) { 
-            data[type].splice(index, 1); 
-            syncUpdateAll(type);
-            renderList(type); 
-            updateDropdowns(); 
-            closeModal(); 
+        function initDefaultImageRow() {
+            document.getElementById('image-reports-container').innerHTML = '';
+            addImageRow();
         }
 
-        function closeModal() { 
-            document.getElementById('modal').classList.add('hidden'); 
+        // --- RENDER TABLES ---
+        function renderCabinTable() {
+            const tbody = document.getElementById('table-body-cabin');
+            tbody.innerHTML = '';
+            if (dbCabin.length === 0) return tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-slate-500">No data available</td></tr>';
+            dbCabin.forEach((item, index) => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-blue-50/50 transition-colors">
+                        <td class="px-4 py-3">${index + 1}</td>
+                        <td class="px-4 py-3 font-medium">${item.name}</td>
+                        <td class="px-4 py-3"><span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-md font-semibold">${item.rank}</span></td>
+                        <td class="px-4 py-3">
+                            <img src="${item.signUrl}" onerror="this.onerror=null; this.src='https://placehold.co/150x50/fee2e2/ef4444?text=Error'" class="h-10 w-auto object-contain bg-white rounded border border-slate-200 p-1 cursor-pointer hover:scale-110 transition-transform origin-left" onclick="window.open('${item.signUrl}', '_blank')">
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="showPersonnelDetail('cabin', ${item.id})" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-indigo-200"><i class="fa-solid fa-ellipsis-vertical px-1"></i> Detail</button>
+                        </td>
+                    </tr>
+                `;
+            });
         }
+
+        function renderEngineerTable() {
+            const tbody = document.getElementById('table-body-engineer');
+            tbody.innerHTML = '';
+            if (dbEngineer.length === 0) return tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-slate-500">No data available</td></tr>';
+            dbEngineer.forEach((item, index) => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-blue-50/50 transition-colors">
+                        <td class="px-4 py-3">${index + 1}</td>
+                        <td class="px-4 py-3 font-medium">${item.name}</td>
+                        <td class="px-4 py-3"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-md font-semibold">${item.rank}</span></td>
+                        <td class="px-4 py-3">
+                            <img src="${item.signUrl}" onerror="this.onerror=null; this.src='https://placehold.co/150x50/fee2e2/ef4444?text=Error'" class="h-10 w-auto object-contain bg-white rounded border border-slate-200 p-1 cursor-pointer hover:scale-110 transition-transform origin-left" onclick="window.open('${item.signUrl}', '_blank')">
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="showPersonnelDetail('engineer', ${item.id})" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-indigo-200"><i class="fa-solid fa-ellipsis-vertical px-1"></i> Detail</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderAircraftTable() {
+            const tbody = document.getElementById('table-body-aircraft');
+            tbody.innerHTML = '';
+            if (dbAircraft.length === 0) return tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-4 text-center text-slate-500">No data available</td></tr>';
+            dbAircraft.forEach((item, index) => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-blue-50/50 transition-colors">
+                        <td class="px-4 py-3">${index + 1}</td>
+                        <td class="px-4 py-3 font-medium tracking-wide">${item.name}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="showAircraftDetail(${item.id})" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-indigo-200"><i class="fa-solid fa-ellipsis-vertical px-1"></i> Detail</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderHandoverTable() {
+            const tbody = document.getElementById('table-body-handover');
+            tbody.innerHTML = '';
+            if (dbHandover.length === 0) return tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-6 text-center text-slate-500">No reports found.</td></tr>';
+            
+            [...dbHandover].reverse().forEach((item, index) => {
+                let badgeColor = item.typeForm === 'Flight Out' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700';
+                let imageCount = item.images ? item.images.length : 0;
+                let imageBadge = imageCount > 0 
+                    ? `<span class="bg-blue-50 border border-blue-200 text-blue-700 text-xs px-2 py-1 rounded-md"><i class="fa-solid fa-image mr-1"></i> ${imageCount} Data</span>` 
+                    : `<span class="text-slate-400 text-xs">- None -</span>`;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-white/40 transition-colors">
+                        <td class="px-4 py-4">${index + 1}</td>
+                        <td class="px-4 py-4">${formatDateTime(item.dateTime)}</td>
+                        <td class="px-4 py-4"><span class="${badgeColor} px-2.5 py-1 rounded-full text-xs font-semibold">${item.typeForm}</span></td>
+                        <td class="px-4 py-4 font-medium">${item.route}</td>
+                        <td class="px-4 py-4 font-mono font-bold text-slate-600">${item.aircraftReg}</td>
+                        <td class="px-4 py-4">${item.handoverBy}</td>
+                        <td class="px-4 py-4">${item.receivedBy}</td>
+                        <td class="px-4 py-4">${imageBadge}</td>
+                        <td class="px-4 py-4 text-center">
+                            <button onclick="showHandoverDetail(${item.id})" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-indigo-200"><i class="fa-solid fa-ellipsis-vertical px-1"></i> Detail</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // --- UPDATE DROPDOWN OPTIONS ---
+        function updateFormSelects() {
+            const acSelect = document.getElementById('report-aircraft');
+            const editAcSelect = document.getElementById('edit-report-aircraft');
+            let acOptions = '<option value="" disabled selected>Select Aircraft</option>';
+            dbAircraft.forEach(ac => acOptions += `<option value="${ac.name}">${ac.name}</option>`);
+            
+            if(acSelect) acSelect.innerHTML = acOptions;
+            if(editAcSelect) editAcSelect.innerHTML = acOptions;
+
+            const personnel = [];
+            dbCabin.forEach(c => personnel.push(`${c.name} (${c.rank})`));
+            dbEngineer.forEach(e => personnel.push(`${e.name} (${e.rank})`));
+            personnel.sort();
+
+            const handoverSelect = document.getElementById('report-handover-by');
+            const receivedSelect = document.getElementById('report-received-by');
+            const editHandoverSelect = document.getElementById('edit-report-handover-by');
+            const editReceivedSelect = document.getElementById('edit-report-received-by');
+            
+            let pOptions = '<option value="" disabled selected>Select Personnel</option>';
+            personnel.forEach(p => pOptions += `<option value="${p}">${p}</option>`);
+
+            if(handoverSelect) handoverSelect.innerHTML = pOptions;
+            if(receivedSelect) receivedSelect.innerHTML = pOptions;
+            if(editHandoverSelect) editHandoverSelect.innerHTML = pOptions;
+            if(editReceivedSelect) editReceivedSelect.innerHTML = pOptions;
+        }
+
+        // --- FORM SUBMIT HANDLERS ---
+        async function submitCabin(e) {
+            e.preventDefault();
+            let rawUrl = document.getElementById('cabin-sign').value;
+            const newRecord = { 
+                id: Date.now().toString(), // Diubah ke string
+                name: document.getElementById('cabin-name').value, 
+                rank: document.getElementById('cabin-rank').value, 
+                signUrl: convertDriveUrlToImage(rawUrl) 
+            };
+
+            dbCabin.push(newRecord);
+            e.target.reset();
+            renderCabinTable();
+            updateFormSelects();
+            showNotification('Menyimpan ke server...');
+            
+            await syncData('ADD', 'Cabin', newRecord);
+            showNotification('Cabin Crew added successfully!');
+        }
+
+        async function submitEngineer(e) {
+            e.preventDefault();
+            let rawUrl = document.getElementById('eng-sign').value;
+            const newRecord = { 
+                id: Date.now().toString(), 
+                name: document.getElementById('eng-name').value, 
+                rank: document.getElementById('eng-rank').value, 
+                signUrl: convertDriveUrlToImage(rawUrl) 
+            };
+
+            dbEngineer.push(newRecord);
+            e.target.reset();
+            renderEngineerTable();
+            updateFormSelects();
+            showNotification('Menyimpan ke server...');
+
+            await syncData('ADD', 'Engineer', newRecord);
+            showNotification('Engineer added successfully!');
+        }
+
+        async function submitAircraft(e) {
+            e.preventDefault();
+            const newRecord = { 
+                id: Date.now().toString(), 
+                name: document.getElementById('aircraft-name').value.toUpperCase() 
+            };
+            dbAircraft.push(newRecord);
+            e.target.reset();
+            renderAircraftTable();
+            updateFormSelects();
+            showNotification('Menyimpan ke server...');
+
+            await syncData('ADD', 'Aircraft', newRecord);
+            showNotification('Aircraft Registration added!');
+        }
+
+        async function submitReport(e) {
+            e.preventDefault();
+            
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('loading-text').innerText = "Uploading images & saving report... (May take a few seconds)";
+
+            try {
+                const imageRows = document.querySelectorAll('.image-input-row');
+                const imagesData = [];
+                
+                // Ambil data gambar yang sudah dikompres dari HTML
+                for(let row of imageRows) {
+                    const position = row.querySelector('[name="img-position"]').value;
+                    const condition = row.querySelector('[name="img-condition"]').value;
+                    
+                    const fileName = row.querySelector('.file-name').value || "No File";
+                    const fileData = row.querySelector('.compressed-data').value || ""; 
+                    
+                    imagesData.push({ posisi: position, kondisi: condition, imageFile: fileName, fileData: fileData });
+                }
+
+                const newReport = {
+                    id: Date.now().toString(), // Diubah ke format string
+                    dateTime: document.getElementById('report-datetime').value,
+                    typeForm: document.getElementById('report-type').value,
+                    route: document.getElementById('report-route').value.toUpperCase(),
+                    aircraftReg: document.getElementById('report-aircraft').value,
+                    handoverBy: document.getElementById('report-handover-by').value,
+                    receivedBy: document.getElementById('report-received-by').value,
+                    images: imagesData 
+                };
+
+                // Kirim Payload Langsung ke Server
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'ADD', table: 'Handover', data: newReport })
+                });
+                
+                // TANGKAP ERROR DARI SERVER JIKA ADA (Misal: Folder Drive tidak ditemukan)
+                const result = await response.json();
+                if (result.status === 'error') {
+                    throw new Error(result.message);
+                }
+                
+                // Ambil Data Terbaru dari Server agar mendapatkan URL gambar yang telah diupload
+                await fetchInitialData(true);
+                
+                e.target.reset();
+                initDefaultImageRow();
+                
+                setTimeout(() => switchView('handover-data'), 500);
+                showNotification('Handover Report & Images saved!');
+
+            } catch (err) {
+                console.error("Gagal menyimpan report:", err);
+                // Tampilkan pesan error ASLI dari server ke layar pengguna
+                showNotification('Upload Gagal: ' + err.message);
+            } finally {
+                document.getElementById('loading-overlay').classList.add('hidden');
+                document.getElementById('loading-text').innerText = "Menghubungkan ke Google Sheets...";
+            }
+        }
+
+        async function submitEditHandover(e) {
+            e.preventDefault();
+            
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('loading-text').innerText = "Updating report & uploading new images...";
+
+            try {
+                const index = dbHandover.findIndex(h => h.id === activeModalId);
+                
+                if(index !== -1) {
+                    const imageRows = document.querySelectorAll('.edit-image-input-row');
+                    const imagesData = [];
+                    
+                    for(let row of imageRows) {
+                        const position = row.querySelector('[name="edit-img-position"]').value;
+                        const condition = row.querySelector('[name="edit-img-condition"]').value;
+                        
+                        const existingFile = row.querySelector('.file-name').value;
+                        const existingUrl = row.querySelector('.file-url')?.value || "";
+                        const newData = row.querySelector('.compressed-data').value;
+                        
+                        let fileName = existingFile;
+                        let fileData = newData; // Berisi data Base64 jika user upload gambar baru
+                        let fileUrl = existingUrl;
+                        
+                        // Jika ada data gambar baru, kosongkan fileUrl lama agar server menggantinya
+                        if (fileData !== "") {
+                            fileUrl = ""; 
+                        }
+                        
+                        imagesData.push({ posisi: position, kondisi: condition, imageFile: fileName, fileData: fileData, fileUrl: fileUrl });
+                    }
+
+                    const updatedReport = {
+                        id: activeModalId,
+                        dateTime: document.getElementById('edit-report-datetime').value,
+                        typeForm: document.getElementById('edit-report-type').value,
+                        route: document.getElementById('edit-report-route').value.toUpperCase(),
+                        aircraftReg: document.getElementById('edit-report-aircraft').value,
+                        handoverBy: document.getElementById('edit-report-handover-by').value,
+                        receivedBy: document.getElementById('edit-report-received-by').value,
+                        images: imagesData
+                    };
+
+                    const response = await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: 'EDIT', table: 'Handover', data: updatedReport })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.status === 'error') {
+                        throw new Error(result.message);
+                    }
+                    
+                    await fetchInitialData(true); // Tarik ulang data dari server
+                    closeModals();
+                    showNotification('Report updated successfully!');
+                }
+            } catch (err) {
+                console.error("Gagal update report:", err);
+                showNotification('Update Gagal: ' + err.message);
+            } finally {
+                document.getElementById('loading-overlay').classList.add('hidden');
+                document.getElementById('loading-text').innerText = "Menghubungkan ke Google Sheets...";
+            }
+        }
+
+        // --- UI UTILITIES ---
+        function showNotification(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = message;
+            
+            toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+            }, 3000);
+        }
+
+        // MENGAMBIL DATA AWAL SAAT APLIKASI DIMUAT
+        window.onload = () => {
+            fetchInitialData();
+            initDefaultImageRow();
+        };
+
     </script>
 </body>
 </html>
