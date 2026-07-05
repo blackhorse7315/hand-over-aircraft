@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome untuk Ikon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2pdf Library untuk Generate PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
         body {
@@ -519,15 +521,18 @@
                 </div>
             </div>
             
-            <div class="flex flex-wrap md:flex-nowrap gap-3 pt-3 border-t border-slate-200">
-                <button onclick="openEditHandover()" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
+            <div class="flex flex-wrap gap-2 pt-3 border-t border-slate-200">
+                <button onclick="downloadPDF()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center min-w-[100px]">
+                    <i class="fa-solid fa-file-pdf mr-2"></i> PDF
+                </button>
+                <button onclick="openEditHandover()" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center min-w-[100px]">
                     <i class="fa-solid fa-pen-to-square mr-2"></i> Edit
                 </button>
-                <button onclick="triggerDuplicateHandover()" class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
-                    <i class="fa-solid fa-copy mr-2"></i> Duplicate
+                <button onclick="triggerDuplicateHandover()" class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center min-w-[100px]">
+                    <i class="fa-solid fa-copy mr-2"></i> Dup
                 </button>
-                <button onclick="triggerDeleteHandover()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
-                    <i class="fa-solid fa-trash mr-2"></i> Delete
+                <button onclick="triggerDeleteHandover()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center min-w-[100px]">
+                    <i class="fa-solid fa-trash mr-2"></i> Del
                 </button>
             </div>
         </div>
@@ -655,9 +660,11 @@
                 const res = await fetch(SCRIPT_URL);
                 const data = await res.json();
 
-                dbCabin = data.Cabin || [];
-                dbEngineer = data.Engineer || [];
-                dbAircraft = data.Aircraft || [];
+                // FIX: Memastikan semua ID di-convert menjadi String/Teks agar bisa di-klik
+                // FIX: Filter otomatis semua URL Drive lama yang formatnya salah menjadi Direct URL
+                dbCabin = (data.Cabin || []).map(item => ({...item, id: item.id.toString(), signUrl: convertDriveUrlToImage(item.signUrl)}));
+                dbEngineer = (data.Engineer || []).map(item => ({...item, id: item.id.toString(), signUrl: convertDriveUrlToImage(item.signUrl)}));
+                dbAircraft = (data.Aircraft || []).map(item => ({...item, id: item.id.toString()}));
                 
                 dbHandover = (data.Handover || []).map(h => {
                     let parsedImages = [];
@@ -721,11 +728,22 @@
             });
         }
 
+        // FIX: Konverter URL Google Drive yang lebih pintar menangkap berbagai format
         function convertDriveUrlToImage(url) {
-            const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) {
-                return `https://lh3.googleusercontent.com/d/${match[1]}`;
+            if(!url) return '';
+            
+            // Pola 1: URL Drive standar (/file/d/ID)
+            const match1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+            if (match1 && match1[1]) {
+                return `https://lh3.googleusercontent.com/d/${match1[1]}`;
             }
+            
+            // Pola 2: URL Thumbnail / open / uc (?id=ID atau &id=ID)
+            const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+            if (match2 && match2[1]) {
+                return `https://lh3.googleusercontent.com/d/${match2[1]}`;
+            }
+            
             return url;
         }
 
@@ -741,9 +759,11 @@
 
         function showPersonnelDetail(type, id) {
             activeModalType = type;
-            activeModalId = id;
+            activeModalId = id.toString();
             const db = type === 'cabin' ? dbCabin : dbEngineer;
-            const person = db.find(p => p.id === id.toString());
+            
+            // FIX: Tambahkan toleransi pencarian id ke .toString()
+            const person = db.find(p => p.id.toString() === activeModalId);
 
             if(!person) return;
 
@@ -824,6 +844,117 @@
             document.getElementById('modal-detail-handover').classList.remove('hidden');
         }
 
+        // --- FUNGSI DOWNLOAD PDF ---
+        function downloadPDF() {
+            const report = dbHandover.find(h => h.id === activeModalId);
+            if(!report) return;
+
+            // Tampilkan loading screen
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('loading-text').innerText = "Mencetak Dokumen PDF...";
+
+            // Cari tanda tangan otomatis dari database Cabin & Engineer
+            let handoverSign = '';
+            let receivedSign = '';
+            const allPersonnel = [...dbCabin, ...dbEngineer];
+
+            const hoPerson = allPersonnel.find(p => `${p.name} (${p.rank})` === report.handoverBy);
+            if(hoPerson) handoverSign = hoPerson.signUrl;
+
+            const rxPerson = allPersonnel.find(p => `${p.name} (${p.rank})` === report.receivedBy);
+            if(rxPerson) receivedSign = rxPerson.signUrl;
+
+            // Render daftar gambar HTML untuk PDF
+            let imagesHtml = '';
+            if (report.images && report.images.length > 0) {
+                report.images.forEach(img => {
+                    let imgSrc = img.fileData || '';
+                    imagesHtml += `
+                        <div style="width: 48%; display: inline-block; vertical-align: top; margin-bottom: 20px; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; box-sizing: border-box; background-color: #f8fafc;">
+                            <p style="margin: 0 0 4px; font-size: 12px; color: #334155;"><strong>Position:</strong> ${img.posisi}</p>
+                            <p style="margin: 0 0 10px; font-size: 12px; color: #334155;"><strong>Condition:</strong> ${img.kondisi}</p>
+                            ${imgSrc ? `<img src="${imgSrc}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1;">` : '<div style="height:200px; background:#e2e8f0; text-align:center; line-height:200px; color:#64748b; font-size:12px; border-radius: 6px;">No Image Data</div>'}
+                        </div>
+                    `;
+                });
+            } else {
+                imagesHtml = '<p style="font-size: 12px; color: #64748b; font-style: italic; width: 100%; text-align: center; padding: 20px;">No images attached in this report.</p>';
+            }
+
+            // Elemen virtual HTML khusus untuk format kertas A4 (tidak terlihat di layar)
+            const element = document.createElement('div');
+            element.style.padding = '20px 50px 40px'; // Padding atas dikurangi jadi 20px (awalnya 40px)
+            element.style.fontFamily = "Calibri, sans-serif"; // Diubah ke Calibri
+            element.style.color = '#1e293b';
+            element.style.width = '800px'; 
+            element.style.backgroundColor = '#ffffff';
+
+            element.innerHTML = `
+                <!-- Header Laporan -->
+                <div style="text-align: center; border-bottom: 3px solid #1e3c72; padding-bottom: 15px; margin-bottom: 20px;">
+                    <img src="https://lh3.googleusercontent.com/d/1WNcGjsZ9_Fp54xzOl01EYRqM6-wY5Zh7" alt="Logo" style="height: 50px; object-fit: contain; display: block; margin: 0 auto 10px;" />
+                    <h1 style="font-size: 18px; font-weight: 800; margin: 0; color: #1e3c72; text-transform: uppercase; letter-spacing: 1px;">Cabin Handover Report</h1>
+                    <p style="margin: 5px 0 0; font-size: 12px; color: #64748b;">Generated via Ecrew System &bull; Printed: ${new Date().toLocaleString('id-ID')}</p>
+                </div>
+
+                <!-- Informasi Laporan -->
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 12px;">
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #cbd5e1; background-color: #f1f5f9; font-weight: 600; width: 20%;">Date & Time</td>
+                        <td style="padding: 10px; border: 1px solid #cbd5e1; width: 30%;">${formatDateTime(report.dateTime)}</td>
+                        <td style="padding: 10px; border: 1px solid #cbd5e1; background-color: #f1f5f9; font-weight: 600; width: 20%;">Type Form</td>
+                        <td style="padding: 10px; border: 1px solid #cbd5e1; width: 30%;"><span style="color: ${report.typeForm === 'Flight Out' ? '#4f46e5' : '#059669'}; font-weight: bold;">${report.typeForm}</span></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #cbd5e1; background-color: #f1f5f9; font-weight: 600;">Route</td>
+                        <td style="padding: 10px; border: 1px solid #cbd5e1;">${report.route}</td>
+                        <td style="padding: 10px; border: 1px solid #cbd5e1; background-color: #f1f5f9; font-weight: 600;">Aircraft Reg</td>
+                        <td style="padding: 10px; border: 1px solid #cbd5e1; font-weight: bold; font-size: 12px;">${report.aircraftReg}</td>
+                    </tr>
+                </table>
+
+                <!-- Bagian Gambar -->
+                <h3 style="font-size: 12px; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px; color: #1e293b;">Image Attachments & Conditions</h3>
+                <div style="font-size: 0; display: flex; flex-wrap: wrap; justify-content: space-between;">
+                    ${imagesHtml}
+                </div>
+
+                <!-- Bagian Tanda Tangan -->
+                <div style="margin-top: 25px; display: table; width: 100%; page-break-inside: avoid;">
+                    <div style="display: table-cell; text-align: center; width: 50%;">
+                        <p style="margin: 0 0 5px; font-weight: 600; font-size: 12px; color: #475569;">Handover By</p>
+                        ${handoverSign ? `<img src="${handoverSign}" style="height: 70px; object-fit: contain; margin: 0 auto;">` : `<div style="height: 70px;"></div>`}
+                        <p style="margin: 5px 0 0; text-decoration: underline; font-weight: 700; font-size: 12px; color: #0f172a;">${report.handoverBy}</p>
+                    </div>
+                    <div style="display: table-cell; text-align: center; width: 50%;">
+                        <p style="margin: 0 0 5px; font-weight: 600; font-size: 12px; color: #475569;">Received By</p>
+                        ${receivedSign ? `<img src="${receivedSign}" style="height: 70px; object-fit: contain; margin: 0 auto;">` : `<div style="height: 70px;"></div>`}
+                        <p style="margin: 5px 0 0; text-decoration: underline; font-weight: 700; font-size: 12px; color: #0f172a;">${report.receivedBy}</p>
+                    </div>
+                </div>
+            `;
+
+            // Konfigurasi Export A4
+            const opt = {
+                margin:       10, // Margin PDF (mm)
+                filename:     `Handover_${report.aircraftReg}_${report.dateTime.split('T')[0]}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true }, 
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Jalankan html2pdf
+            html2pdf().set(opt).from(element).save().then(() => {
+                document.getElementById('loading-overlay').classList.add('hidden');
+                document.getElementById('loading-text').innerText = "Menghubungkan ke Google Sheets...";
+                showNotification('Dokumen PDF berhasil diunduh!');
+            }).catch(err => {
+                console.error(err);
+                document.getElementById('loading-overlay').classList.add('hidden');
+                showNotification('Error: Gagal membuat file PDF!');
+            });
+        }
+
         async function triggerDuplicateHandover() {
             const report = dbHandover.find(h => h.id === activeModalId);
             if(!report) return;
@@ -881,7 +1012,9 @@
         function showAircraftDetail(id) {
             activeModalType = 'aircraft';
             activeModalId = id.toString();
-            const aircraft = dbAircraft.find(a => a.id === activeModalId);
+            
+            // FIX: Tambahkan toleransi pencarian id ke .toString()
+            const aircraft = dbAircraft.find(a => a.id.toString() === activeModalId);
             
             if(!aircraft) return;
             document.getElementById('detail-aircraft-name').innerText = aircraft.name;
@@ -1144,15 +1277,15 @@
             if (dbCabin.length === 0) return tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-slate-500">No data available</td></tr>';
             dbCabin.forEach((item, index) => {
                 tbody.innerHTML += `
-                    <tr class="hover:bg-blue-50/50 transition-colors">
+                    <tr class="hover:bg-blue-50/60 hover:shadow-sm transition-all cursor-pointer" onclick="showPersonnelDetail('cabin', '${item.id}')" title="Klik baris untuk melihat detail">
                         <td class="px-4 py-3">${index + 1}</td>
                         <td class="px-4 py-3 font-medium">${item.name}</td>
                         <td class="px-4 py-3"><span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-md font-semibold">${item.rank}</span></td>
                         <td class="px-4 py-3">
-                            <img src="${item.signUrl}" onerror="this.onerror=null; this.src='https://placehold.co/150x50/fee2e2/ef4444?text=Error'" class="h-10 w-auto object-contain bg-white rounded border border-slate-200 p-1 cursor-pointer hover:scale-110 transition-transform origin-left" onclick="window.open('${item.signUrl}', '_blank')">
+                            <img src="${item.signUrl}" onerror="this.onerror=null; this.src='https://placehold.co/150x50/fee2e2/ef4444?text=Error'" class="h-10 w-auto object-contain bg-white rounded border border-slate-200 p-1 cursor-pointer hover:scale-110 transition-transform origin-left" onclick="event.stopPropagation(); window.open('${item.signUrl}', '_blank')" title="Buka gambar di tab baru">
                         </td>
                         <td class="px-4 py-3 text-center">
-                            <button onclick="showPersonnelDetail('cabin', ${item.id})" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-indigo-200"><i class="fa-solid fa-ellipsis-vertical px-1"></i> Detail</button>
+                            <button class="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-indigo-200 pointer-events-none"><i class="fa-solid fa-ellipsis-vertical px-1"></i> Detail</button>
                         </td>
                     </tr>
                 `;
@@ -1165,15 +1298,15 @@
             if (dbEngineer.length === 0) return tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-slate-500">No data available</td></tr>';
             dbEngineer.forEach((item, index) => {
                 tbody.innerHTML += `
-                    <tr class="hover:bg-blue-50/50 transition-colors">
+                    <tr class="hover:bg-blue-50/60 hover:shadow-sm transition-all cursor-pointer" onclick="showPersonnelDetail('engineer', '${item.id}')" title="Klik baris untuk melihat detail">
                         <td class="px-4 py-3">${index + 1}</td>
                         <td class="px-4 py-3 font-medium">${item.name}</td>
                         <td class="px-4 py-3"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-md font-semibold">${item.rank}</span></td>
                         <td class="px-4 py-3">
-                            <img src="${item.signUrl}" onerror="this.onerror=null; this.src='https://placehold.co/150x50/fee2e2/ef4444?text=Error'" class="h-10 w-auto object-contain bg-white rounded border border-slate-200 p-1 cursor-pointer hover:scale-110 transition-transform origin-left" onclick="window.open('${item.signUrl}', '_blank')">
+                            <img src="${item.signUrl}" onerror="this.onerror=null; this.src='https://placehold.co/150x50/fee2e2/ef4444?text=Error'" class="h-10 w-auto object-contain bg-white rounded border border-slate-200 p-1 cursor-pointer hover:scale-110 transition-transform origin-left" onclick="event.stopPropagation(); window.open('${item.signUrl}', '_blank')" title="Buka gambar di tab baru">
                         </td>
                         <td class="px-4 py-3 text-center">
-                            <button onclick="showPersonnelDetail('engineer', ${item.id})" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-indigo-200"><i class="fa-solid fa-ellipsis-vertical px-1"></i> Detail</button>
+                            <button class="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-indigo-200 pointer-events-none"><i class="fa-solid fa-ellipsis-vertical px-1"></i> Detail</button>
                         </td>
                     </tr>
                 `;
@@ -1186,11 +1319,11 @@
             if (dbAircraft.length === 0) return tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-4 text-center text-slate-500">No data available</td></tr>';
             dbAircraft.forEach((item, index) => {
                 tbody.innerHTML += `
-                    <tr class="hover:bg-blue-50/50 transition-colors">
+                    <tr class="hover:bg-blue-50/60 hover:shadow-sm transition-all cursor-pointer" onclick="showAircraftDetail('${item.id}')" title="Klik baris untuk melihat detail">
                         <td class="px-4 py-3">${index + 1}</td>
                         <td class="px-4 py-3 font-medium tracking-wide">${item.name}</td>
                         <td class="px-4 py-3 text-center">
-                            <button onclick="showAircraftDetail(${item.id})" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-indigo-200"><i class="fa-solid fa-ellipsis-vertical px-1"></i> Detail</button>
+                            <button class="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-indigo-200 pointer-events-none"><i class="fa-solid fa-ellipsis-vertical px-1"></i> Detail</button>
                         </td>
                     </tr>
                 `;
@@ -1209,8 +1342,9 @@
                     ? `<span class="bg-blue-50 border border-blue-200 text-blue-700 text-xs px-2 py-1 rounded-md"><i class="fa-solid fa-image mr-1"></i> ${imageCount} Data</span>` 
                     : `<span class="text-slate-400 text-xs">- None -</span>`;
 
+                // Menambahkan cursor-pointer, efek hover, dan onclick pada tag <tr>
                 tbody.innerHTML += `
-                    <tr class="hover:bg-white/40 transition-colors">
+                    <tr class="hover:bg-blue-50/60 hover:shadow-sm transition-all cursor-pointer" onclick="showHandoverDetail('${item.id}')" title="Klik baris untuk melihat detail">
                         <td class="px-4 py-4">${index + 1}</td>
                         <td class="px-4 py-4">${formatDateTime(item.dateTime)}</td>
                         <td class="px-4 py-4"><span class="${badgeColor} px-2.5 py-1 rounded-full text-xs font-semibold">${item.typeForm}</span></td>
@@ -1220,7 +1354,8 @@
                         <td class="px-4 py-4">${item.receivedBy}</td>
                         <td class="px-4 py-4">${imageBadge}</td>
                         <td class="px-4 py-4 text-center">
-                            <button onclick="showHandoverDetail(${item.id})" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-indigo-200"><i class="fa-solid fa-ellipsis-vertical px-1"></i> Detail</button>
+                            <!-- Tombol detail tetap ada sebagai penanda visual, tapi klik akan diteruskan ke baris <tr> -->
+                            <button class="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-indigo-200 pointer-events-none"><i class="fa-solid fa-ellipsis-vertical px-1"></i> Detail</button>
                         </td>
                     </tr>
                 `;
