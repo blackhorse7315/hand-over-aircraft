@@ -965,18 +965,16 @@
 
             const route = report.route || "-";
             const dateStr = formatDateTime(report.dateTime) || "-";
-            
-            // Nama "Handover By" umumnya ada gelar/rank, jika mau bisa dibersihkan. 
-            // Kita ambil dari database asli.
             const handoverBy = report.handoverBy || "-";
             
-            // Daftar CC sesuai permintaan
-            const ccEmails = "operation@pt-twa.co.id,chiefpilotrwtranswisata@gmail.com,chiefpilotfwtranswisata@gmail.com";
+            // Tujuan Utama (To) dan CC Email
+            const toEmail = "operation@pt-twa.co.id";
+            const ccEmails = "chiefpilotrwtranswisata@gmail.com,chiefpilotfwtranswisata@gmail.com";
             
             // Subjek Email
             const subject = `Handover Report Flight Duty VIP - ${route}`;
             
-            // Body Email (Format dengan line break / enter)
+            // Body Email (Format persis sesuai permintaan)
             const emailBody = `Dear Chief Pilot Fixed Wing,
 
 I hereby send the handover report Flight Duty VIP route ${route}, date from ${dateStr}. File Attached.
@@ -988,12 +986,12 @@ Best Regards,
 Handover by,
 ${handoverBy}`;
 
-            // Encode karakter agar format enter, spasi, koma tidak rusak di URL
-            const mailtoLink = `mailto:?cc=${ccEmails}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+            // Encode karakter lalu gabungkan ke dalam tautan mailto (To & CC sudah dipisah)
+            const mailtoLink = `mailto:${toEmail}?cc=${ccEmails}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
             
-            showNotification('Membuka aplikasi Email. Harap lampirkan PDF manual!');
+            showNotification('Membuka aplikasi Email. Harap lampirkan PDF secara manual!');
             
-            // Eksekusi buka aplikasi email default (Outlook/Apple Mail/Mail Windows/Gmail App)
+            // Eksekusi buka aplikasi email default
             window.location.href = mailtoLink;
         }
 
