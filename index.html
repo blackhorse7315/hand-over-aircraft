@@ -521,17 +521,20 @@
                 </div>
             </div>
             
-            <div class="flex flex-wrap gap-2 pt-3 border-t border-slate-200">
-                <button onclick="downloadPDF()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center min-w-[100px]">
+            <div class="flex flex-wrap md:flex-nowrap gap-3 pt-3 border-t border-slate-200">
+                <button onclick="downloadPDF()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
                     <i class="fa-solid fa-file-pdf mr-2"></i> PDF
                 </button>
-                <button onclick="openEditHandover()" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center min-w-[100px]">
+                <button onclick="sendEmail()" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-envelope mr-2"></i> Email
+                </button>
+                <button onclick="openEditHandover()" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
                     <i class="fa-solid fa-pen-to-square mr-2"></i> Edit
                 </button>
-                <button onclick="triggerDuplicateHandover()" class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center min-w-[100px]">
+                <button onclick="triggerDuplicateHandover()" class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
                     <i class="fa-solid fa-copy mr-2"></i> Dup
                 </button>
-                <button onclick="triggerDeleteHandover()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center min-w-[100px]">
+                <button onclick="triggerDeleteHandover()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center">
                     <i class="fa-solid fa-trash mr-2"></i> Del
                 </button>
             </div>
@@ -953,6 +956,45 @@
                 document.getElementById('loading-overlay').classList.add('hidden');
                 showNotification('Error: Gagal membuat file PDF!');
             });
+        }
+
+        // --- FUNGSI KIRIM EMAIL ---
+        function sendEmail() {
+            const report = dbHandover.find(h => h.id === activeModalId);
+            if(!report) return;
+
+            const route = report.route || "-";
+            const dateStr = formatDateTime(report.dateTime) || "-";
+            
+            // Nama "Handover By" umumnya ada gelar/rank, jika mau bisa dibersihkan. 
+            // Kita ambil dari database asli.
+            const handoverBy = report.handoverBy || "-";
+            
+            // Daftar CC sesuai permintaan
+            const ccEmails = "operation@pt-twa.co.id,chiefpilotrwtranswisata@gmail.com,chiefpilotfwtranswisata@gmail.com";
+            
+            // Subjek Email
+            const subject = `Handover Report Flight Duty VIP - ${route}`;
+            
+            // Body Email (Format dengan line break / enter)
+            const emailBody = `Dear Chief Pilot Fixed Wing,
+
+I hereby send the handover report Flight Duty VIP route ${route}, date from ${dateStr}. File Attached.
+
+Thank you for your attention.
+
+Best Regards,
+
+Handover by,
+${handoverBy}`;
+
+            // Encode karakter agar format enter, spasi, koma tidak rusak di URL
+            const mailtoLink = `mailto:?cc=${ccEmails}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+            
+            showNotification('Membuka aplikasi Email. Harap lampirkan PDF manual!');
+            
+            // Eksekusi buka aplikasi email default (Outlook/Apple Mail/Mail Windows/Gmail App)
+            window.location.href = mailtoLink;
         }
 
         async function triggerDuplicateHandover() {
